@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as api from '../api/client';
-import { downloadUrl } from '../api/client';
 import { STORAGE_KEYS, COLORS } from '../config';
-import DateGroupedGrid from '../components/DateGroupedGrid';
-import Lightbox from '../components/Lightbox';
+import DateGroupedGrid, { GRID_THUMB_SIZE } from '../components/DateGroupedGrid';
+import VideoPlayerModal from '../components/VideoPlayerModal';
 import type { MCloudFile } from '../types';
 
-const CACHE_KEY = STORAGE_KEYS.cachedFiles('billede');
+const CACHE_KEY = STORAGE_KEYS.cachedFiles('video');
 
-export default function GalleryScreen() {
+export default function VideoScreen() {
   const [files, setFiles] = useState<MCloudFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -19,7 +18,7 @@ export default function GalleryScreen() {
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
-      const data = await api.getFiles({ type: 'billede' });
+      const data = await api.getFiles({ type: 'video' });
       setFiles(data);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
@@ -45,12 +44,17 @@ export default function GalleryScreen() {
     <View style={styles.container}>
       <DateGroupedGrid
         files={files}
-        thumbnailUri={file => downloadUrl(file.filename)}
+        renderThumbnail={file => (
+          <View style={styles.videoTile}>
+            <Text style={styles.playIcon}>▶</Text>
+            <Text style={styles.filename} numberOfLines={1}>{file.original_name}</Text>
+          </View>
+        )}
         onPress={setSelected}
         refreshing={refreshing}
         onRefresh={() => load(true)}
       />
-      <Lightbox file={selected} onClose={() => setSelected(null)} />
+      <VideoPlayerModal file={selected} onClose={() => setSelected(null)} />
     </View>
   );
 }
@@ -58,4 +62,14 @@ export default function GalleryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  videoTile: {
+    width: GRID_THUMB_SIZE,
+    height: GRID_THUMB_SIZE,
+    backgroundColor: COLORS.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  playIcon: { color: COLORS.accent, fontSize: 24, marginBottom: 4 },
+  filename: { color: COLORS.textMuted, fontSize: 10, textAlign: 'center' },
 });

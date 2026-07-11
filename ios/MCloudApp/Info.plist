@@ -36,6 +36,19 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MCloud skal have adgang til dine billeder og videoer for at kunne synkronisere dem til din private cloud.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MCloud gemmer downloadede billeder i dit fotobibliotek, når du trykker på Download.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.transistorsoft.fetch</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
