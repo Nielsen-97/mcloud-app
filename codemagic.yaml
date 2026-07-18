@@ -1,10 +1,8 @@
- workflows:
+workflows:
   react-native-ios:
     name: MCloud iOS
     max_build_duration: 60
     environment:
-      ios_signing:
-        distribution_type: development
       vars:
         BUNDLE_ID: "com.mcloud.app"
     scripts:
@@ -14,15 +12,12 @@
       - name: Install CocoaPods
         script: |
           cd ios && pod install
-      - name: Build iOS
+      - name: Build iOS unsigned
         script: |
           xcode-project build-ipa \
             --workspace "ios/MCloudApp.xcworkspace" \
             --scheme "MCloudApp" \
-            --config "Debug"
+            --config "Debug" \
+            --disable-xcpretty
     artifacts:
       - build/ios/ipa/*.ipa
-    publishing:
-      email:
-        recipients:
-          - mathiastrans97@live.dk
