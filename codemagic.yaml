@@ -9,13 +9,21 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios && pod install
-      - name: Build iOS
+      - name: Build iOS IPA
         script: |
           xcodebuild \
             -workspace ios/MCloudApp.xcworkspace \
             -scheme MCloudApp \
             -configuration Debug \
-            -sdk iphonesimulator \
+            -sdk iphoneos \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             -derivedDataPath build
+          
+          mkdir -p build/ipa/Payload
+          cp -r build/Build/Products/Debug-iphoneos/MCloudApp.app build/ipa/Payload/
+          cd build/ipa && zip -r ../MCloudApp.ipa Payload
     artifacts:
-      - build/Build/Products/**/*.app
+      - build/MCloudApp.ipa
