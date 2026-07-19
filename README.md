@@ -25,6 +25,25 @@ npx eslint src App.tsx --ext .ts,.tsx
 npx jest
 ```
 
+### Bygge en .ipa til sideloading (uden Mac)
+
+`codemagic.yaml` bygger appen på Codemagic's Mac-runners for et rigtigt device
+(`-sdk iphoneos`) uden code signing, pakker `.app` i en `Payload/`-mappe og zipper
+den til `build/MCloudApp.ipa`. Denne IPA er **usigneret** — det er meningen.
+Sideloadly (eller AltServer) signerer den selv med dit Apple ID, når du installerer.
+
+Bemærk forskellen på de to sideloading-værktøjer:
+
+- **Sideloadly**: manuel, engangs-installation fra din computer. Praktisk til at
+  teste builds hurtigt, men appen udløber efter 7 dage (gratis Apple ID) uden at
+  blive fornyet automatisk.
+- **AltStore + AltServer** (det oprindelige mål — se projektbeskrivelsen): AltServer
+  kører på Raspberry Pi'en og forny­er appen automatisk hver 7. dag, når telefonen er
+  på hjemme-WiFi. Det er det du vil bruge i det lange løb, ikke Sideloadly.
+
+Samme `.ipa` virker til begge — installer via Sideloadly til hurtig test, og via
+AltStore når du vil have den til at blive ved med at virke uden manuel indgriben.
+
 ## Struktur
 
 ```
