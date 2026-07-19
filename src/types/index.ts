@@ -8,7 +8,7 @@ export interface MCloudFile {
   filetype: FileType;
   owner: string;
   album_id: number | null;
-  upload_date: string;
+  upload_date: string | null;
 }
 
 export interface Album {

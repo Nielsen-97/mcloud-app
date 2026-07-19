@@ -4,7 +4,7 @@ import {
   Dimensions, RefreshControl,
 } from 'react-native';
 import { COLORS } from '../config';
-import { chunkSections, groupByDay } from '../utils/date';
+import { chunkSections, groupByDay, parseServerDate } from '../utils/date';
 import type { MCloudFile } from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -28,7 +28,7 @@ export default function DateGroupedGrid({
   files, thumbnailUri, renderThumbnail, onPress, onLongPress, renderBadge, refreshing, onRefresh,
 }: Props) {
   const sections = chunkSections<MCloudFile>(
-    groupByDay<MCloudFile>(files, (f: MCloudFile) => new Date(f.upload_date.replace(' ', 'T'))),
+    groupByDay<MCloudFile>(files, (f: MCloudFile) => parseServerDate(f.upload_date)),
     COLUMNS,
   );
 

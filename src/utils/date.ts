@@ -7,12 +7,15 @@ const MONTHS = [
   'juli', 'august', 'september', 'oktober', 'november', 'december',
 ];
 
-export function parseServerDate(value: string): Date {
+export function parseServerDate(value: string | null | undefined): Date {
   // Server sends "YYYY-MM-DD HH:MM:SS"; make it ISO-parseable.
-  return new Date(value.replace(' ', 'T'));
+  if (!value) return new Date(0);
+  const parsed = new Date(value.replace(' ', 'T'));
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 }
 
 export function formatDanishDateHeader(date: Date): string {
+  if (date.getTime() === 0) return 'Ukendt dato';
   const weekday = WEEKDAYS[date.getDay()];
   const day = date.getDate();
   const month = MONTHS[date.getMonth()];
