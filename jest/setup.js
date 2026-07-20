@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest'),
 );
@@ -33,3 +35,11 @@ jest.mock('react-native-file-viewer', () => ({
 }));
 
 jest.mock('react-native-video', () => 'Video');
+
+jest.mock('../src/services/serverUrl', () => ({
+  LOCAL_URL: 'http://192.168.8.142',
+  REMOTE_URL: 'https://mcloud.taile49ac8.ts.net',
+  getServerUrl: jest.fn(() => 'https://mcloud.taile49ac8.ts.net'),
+  resolveServerUrl: jest.fn(() => Promise.resolve('https://mcloud.taile49ac8.ts.net')),
+  subscribeServerUrl: jest.fn(() => () => {}),
+}));

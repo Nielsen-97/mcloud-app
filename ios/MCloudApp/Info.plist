@@ -36,6 +36,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MCloud forbinder direkte til din MCloud-server på hjemmenetværket, når du er hjemme, i stedet for at gå via VPN.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>MCloud skal have adgang til dine billeder og videoer for at kunne synkronisere dem til din private cloud.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, StatusBar,
@@ -6,8 +6,10 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import NetInfo from '@react-native-community/netinfo';
 
 import { COLORS } from './src/config';
+import { resolveServerUrl } from './src/services/serverUrl';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { SyncProvider } from './src/context/SyncContext';
 import UploadBanner from './src/components/UploadBanner';
@@ -112,6 +114,25 @@ function Root() {
 }
 
 export default function App() {
+  const [urlReady, setUrlReady] = useState(false);
+
+  useEffect(() => {
+    resolveServerUrl().finally(() => setUrlReady(true));
+    // Re-probe local vs. Tailscale whenever connectivity changes (e.g. arriving home).
+    const unsubscribe = NetInfo.addEventListener(() => resolveServerUrl());
+    return unsubscribe;
+  }, []);
+
+  if (!urlReady) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />

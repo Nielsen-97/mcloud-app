@@ -1,4 +1,4 @@
-import { SERVER_URL } from '../config';
+import { getServerUrl } from '../services/serverUrl';
 import type {
   Album,
   FileStats,
@@ -17,7 +17,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${SERVER_URL}${path}`, {
+  const res = await fetch(`${getServerUrl()}${path}`, {
     credentials: 'include',
     ...init,
   });
@@ -32,15 +32,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function downloadUrl(filename: string): string {
-  return `${SERVER_URL}/download/${filename}`;
+  return `${getServerUrl()}/download/${filename}`;
 }
 
 export function viewUrl(filename: string): string {
-  return `${SERVER_URL}/view/${filename}`;
+  return `${getServerUrl()}/view/${filename}`;
 }
 
 export async function login(username: string, password: string): Promise<void> {
-  const res = await fetch(`${SERVER_URL}/login`, {
+  const res = await fetch(`${getServerUrl()}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
@@ -138,7 +138,7 @@ export async function uploadFile(
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${SERVER_URL}/upload`);
+    xhr.open('POST', `${getServerUrl()}/upload`);
     xhr.withCredentials = true;
     xhr.upload.onprogress = event => {
       if (onProgress && event.lengthComputable) {

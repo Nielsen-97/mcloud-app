@@ -1,5 +1,3 @@
-export const SERVER_URL = 'https://mcloud.taile49ac8.ts.net';
-
 export const COLORS = {
   background: '#0f0f11',
   sidebar: '#161618',
