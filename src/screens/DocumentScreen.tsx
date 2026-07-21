@@ -6,7 +6,7 @@ import {
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import * as api from '../api/client';
-import { downloadUrl } from '../api/client';
+import { authHeaders, downloadUrl } from '../api/client';
 import { COLORS } from '../config';
 import { iconForFilename, formatBytes } from '../utils/fileIcons';
 import { parseServerDate } from '../utils/date';
@@ -36,7 +36,11 @@ export default function DocumentScreen() {
     setOpeningId(file.id);
     try {
       const dest = `${RNFS.TemporaryDirectoryPath}/${file.original_name}`;
-      await RNFS.downloadFile({ fromUrl: downloadUrl(file.filename), toFile: dest }).promise;
+      await RNFS.downloadFile({
+        fromUrl: downloadUrl(file.filename),
+        toFile: dest,
+        headers: authHeaders(),
+      }).promise;
       await FileViewer.open(dest);
     } catch {
       Alert.alert('Fejl', 'Kunne ikke åbne filen');

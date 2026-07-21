@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../api/client';
-import { downloadUrl } from '../api/client';
+import { authHeaders, downloadUrl } from '../api/client';
 import { COLORS } from '../config';
 import type { Album, MCloudUser } from '../types';
 import type { AlbumStackParamList } from '../navigation/types';
@@ -85,7 +85,10 @@ export default function AlbumListScreen({ navigation }: Props) {
             style={styles.card}
             onPress={() => navigation.navigate('AlbumDetail', { album: item })}>
             {item.cover_filename ? (
-              <Image source={{ uri: downloadUrl(item.cover_filename) }} style={styles.cover} />
+              <Image
+                source={{ uri: downloadUrl(item.cover_filename), headers: authHeaders() }}
+                style={styles.cover}
+              />
             ) : (
               <View style={[styles.cover, styles.coverPlaceholder]}>
                 <Text style={styles.coverPlaceholderText}>📁</Text>

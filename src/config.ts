@@ -15,6 +15,7 @@ export const COLORS = {
 export const STORAGE_KEYS = {
   session: 'session',
   username: 'username',
+  sessionCookie: 'sessionCookie',
   uploadedLocalIds: 'uploadedLocalIds',
   lastSync: 'lastSync',
   cachedFiles: (type: string) => `cachedFiles:${type}`,

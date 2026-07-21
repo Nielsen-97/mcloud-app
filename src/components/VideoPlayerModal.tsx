@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Video from 'react-native-video';
-import { viewUrl } from '../api/client';
+import { authHeaders, viewUrl } from '../api/client';
 import { COLORS } from '../config';
 import type { MCloudFile } from '../types';
 
@@ -17,7 +17,7 @@ export default function VideoPlayerModal({ file, onClose }: Props) {
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.container}>
         <Video
-          source={{ uri: viewUrl(file.filename) }}
+          source={{ uri: viewUrl(file.filename), headers: authHeaders() }}
           style={styles.video}
           resizeMode="contain"
           controls

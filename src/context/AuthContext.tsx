@@ -4,6 +4,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../config';
 import * as api from '../api/client';
+import { getSessionCookie, loadSessionCookie } from '../services/sessionCookie';
 
 interface AuthContextValue {
   loggedIn: boolean;
@@ -25,8 +26,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const [session, storedUsername] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.session),
         AsyncStorage.getItem(STORAGE_KEYS.username),
+        loadSessionCookie(),
       ]);
-      if (session) {
+      // Require both the session flag and an actual stored cookie — without
+      // the cookie every request would 401 regardless of what this flag says.
+      if (session && getSessionCookie()) {
         setLoggedIn(true);
         setUsername(storedUsername);
       }

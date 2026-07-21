@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../api/client';
-import { downloadUrl } from '../api/client';
+import { authHeaders, downloadUrl } from '../api/client';
 import { COLORS } from '../config';
 import DateGroupedGrid, { GRID_THUMB_SIZE } from '../components/DateGroupedGrid';
 import Lightbox from '../components/Lightbox';
@@ -117,7 +117,10 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
             numColumns={3}
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => addPhoto(item)} disabled={adding} style={styles.pickerTile}>
-                <Image source={{ uri: downloadUrl(item.filename) }} style={styles.pickerImage} />
+                <Image
+                  source={{ uri: downloadUrl(item.filename), headers: authHeaders() }}
+                  style={styles.pickerImage}
+                />
               </TouchableOpacity>
             )}
             ListEmptyComponent={<Text style={styles.emptyText}>Ingen flere billeder at tilføje</Text>}

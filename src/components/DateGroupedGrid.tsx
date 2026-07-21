@@ -4,6 +4,7 @@ import {
   Dimensions, RefreshControl,
 } from 'react-native';
 import { COLORS } from '../config';
+import { authHeaders } from '../api/client';
 import { chunkSections, groupByDay, parseServerDate } from '../utils/date';
 import type { MCloudFile } from '../types';
 
@@ -49,7 +50,7 @@ export default function DateGroupedGrid({
               style={styles.thumbWrap}>
               {renderThumbnail
                 ? renderThumbnail(file)
-                : <Image source={{ uri: thumbnailUri?.(file) }} style={styles.image} />}
+                : <Image source={{ uri: thumbnailUri?.(file), headers: authHeaders() }} style={styles.image} />}
               {renderBadge?.(file)}
             </TouchableOpacity>
           ))}

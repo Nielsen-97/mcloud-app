@@ -6,7 +6,7 @@ import {
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
-import { downloadUrl } from '../api/client';
+import { authHeaders, downloadUrl } from '../api/client';
 import { COLORS } from '../config';
 import type { MCloudFile } from '../types';
 
@@ -58,7 +58,7 @@ export default function Lightbox({ file, onClose }: Props) {
     setBusy(true);
     try {
       const dest = `${RNFS.TemporaryDirectoryPath}/${file.original_name}`;
-      await RNFS.downloadFile({ fromUrl: uri, toFile: dest }).promise;
+      await RNFS.downloadFile({ fromUrl: uri, toFile: dest, headers: authHeaders() }).promise;
       await CameraRoll.saveAsset(`file://${dest}`, { type: 'photo' });
       Alert.alert('Gemt', 'Billedet er gemt i dit fotobibliotek');
     } catch {
@@ -71,7 +71,7 @@ export default function Lightbox({ file, onClose }: Props) {
     setBusy(true);
     try {
       const dest = `${RNFS.TemporaryDirectoryPath}/${file.original_name}`;
-      await RNFS.downloadFile({ fromUrl: uri, toFile: dest }).promise;
+      await RNFS.downloadFile({ fromUrl: uri, toFile: dest, headers: authHeaders() }).promise;
       await Share.open({ url: `file://${dest}` });
     } catch (error: any) {
       if (error?.message !== 'User did not share') {
@@ -87,7 +87,7 @@ export default function Lightbox({ file, onClose }: Props) {
         <Animated.View
           style={[styles.imageWrap, { transform: [{ translateY }] }]}
           {...panResponder.panHandlers}>
-          <Image source={{ uri }} style={styles.image} resizeMode="contain" />
+          <Image source={{ uri, headers: authHeaders() }} style={styles.image} resizeMode="contain" />
         </Animated.View>
 
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>

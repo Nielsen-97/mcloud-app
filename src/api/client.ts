@@ -1,4 +1,5 @@
 import { getServerUrl } from '../services/serverUrl';
+import { authHeaders, parseSetCookieHeader, setSessionCookie } from '../services/sessionCookie';
 import type {
   Album,
   FileStats,
@@ -20,6 +21,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${getServerUrl()}${path}`, {
     credentials: 'include',
     ...init,
+    headers: { ...authHeaders(), ...init?.headers },
   });
   if (!res.ok) {
     throw new ApiError(res.status, `${init?.method ?? 'GET'} ${path} failed (${res.status})`);
@@ -31,6 +33,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return undefined as unknown as T;
 }
 
+export { authHeaders } from '../services/sessionCookie';
+
 export function downloadUrl(filename: string): string {
   return `${getServerUrl()}/download/${filename}`;
 }
@@ -39,20 +43,42 @@ export function viewUrl(filename: string): string {
   return `${getServerUrl()}/view/${filename}`;
 }
 
+/**
+ * Uses XMLHttpRequest (not fetch) so we can read the raw Set-Cookie response
+ * header — RN's fetch Headers implementation doesn't reliably expose it.
+ * The session cookie is then stored and attached manually to every
+ * subsequent request, since it won't be forwarded automatically when the
+ * active host later switches between the LAN IP and the Tailscale hostname.
+ */
 export async function login(username: string, password: string): Promise<void> {
-  const res = await fetch(`${getServerUrl()}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-    credentials: 'include',
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${getServerUrl()}/login`);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.withCredentials = true;
+    xhr.onload = async () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new ApiError(xhr.status, 'Forkert brugernavn eller password'));
+        return;
+      }
+      const rawSetCookie = xhr.getResponseHeader('set-cookie');
+      const cookie = rawSetCookie ? parseSetCookieHeader(rawSetCookie) : null;
+      if (cookie) {
+        await setSessionCookie(cookie);
+      }
+      resolve();
+    };
+    xhr.onerror = () => reject(new Error('Netværksfejl under login'));
+    xhr.send(`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
   });
-  if (!res.ok) {
-    throw new ApiError(res.status, 'Forkert brugernavn eller password');
-  }
 }
 
 export async function logout(): Promise<void> {
-  await request('/logout');
+  try {
+    await request('/logout');
+  } finally {
+    await setSessionCookie(null);
+  }
 }
 
 export async function getFiles(params?: {
@@ -140,6 +166,8 @@ export async function uploadFile(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${getServerUrl()}/upload`);
     xhr.withCredentials = true;
+    const cookie = authHeaders().Cookie;
+    if (cookie) xhr.setRequestHeader('Cookie', cookie);
     xhr.upload.onprogress = event => {
       if (onProgress && event.lengthComputable) {
         onProgress(event.loaded / event.total);
