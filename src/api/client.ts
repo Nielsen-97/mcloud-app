@@ -1,5 +1,5 @@
 import { getServerUrl } from '../services/serverUrl';
-import { authHeaders, parseSetCookieHeader, setSessionCookie } from '../services/sessionCookie';
+import { authHeaders, captureCookiesFromStore, setSessionCookie } from '../services/sessionCookie';
 import type {
   Album,
   FileStats,
@@ -60,35 +60,37 @@ export function viewUrl(filename: string): string {
 }
 
 /**
- * Uses XMLHttpRequest (not fetch) so we can read the raw Set-Cookie response
- * header — RN's fetch Headers implementation doesn't reliably expose it.
- * The session cookie is then stored and attached manually to every
- * subsequent request, since it won't be forwarded automatically when the
- * active host later switches between the LAN IP and the Tailscale hostname.
+ * After a successful login, the session cookie is captured from the OS's own
+ * cookie store (not from the response object — on iOS, NSURLSession
+ * intercepts Set-Cookie headers into its own store and doesn't reliably
+ * expose them back to JS) and re-attached manually to every subsequent
+ * request, since it won't be forwarded automatically when the active host
+ * later switches between the LAN IP and the Tailscale hostname.
  */
 export async function login(username: string, password: string): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${getServerUrl()}/login`);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    xhr.withCredentials = true;
-    xhr.timeout = REQUEST_TIMEOUT_MS;
-    xhr.ontimeout = () => reject(new Error(`Tidsudløb: login svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`));
-    xhr.onload = async () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new ApiError(xhr.status, 'Forkert brugernavn eller password'));
-        return;
-      }
-      const rawSetCookie = xhr.getResponseHeader('set-cookie');
-      const cookie = rawSetCookie ? parseSetCookieHeader(rawSetCookie) : null;
-      if (cookie) {
-        await setSessionCookie(cookie);
-      }
-      resolve();
-    };
-    xhr.onerror = () => reject(new Error('Netværksfejl under login'));
-    xhr.send(`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const loginUrl = getServerUrl();
+  try {
+    const res = await fetch(`${loginUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+      credentials: 'include',
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, 'Forkert brugernavn eller password');
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Tidsudløb: login svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+  await captureCookiesFromStore(loginUrl);
 }
 
 export async function logout(): Promise<void> {

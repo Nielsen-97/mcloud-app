@@ -1,13 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CookieManager from '@preeternal/react-native-cookie-manager';
 import { STORAGE_KEYS } from '../config';
 
 // The server's session cookie is scoped to whichever host set it (Tailscale
 // hostname or LAN IP) — the OS cookie jar will never forward it to the other
 // host, since that's correct, unavoidable platform behavior for cookies. We
-// therefore manage the session cookie ourselves: capture it from the login
-// response, persist it, and attach it as an explicit header on every request
-// (JSON API calls, image/video loads, and file downloads alike) regardless of
-// which host is currently active.
+// therefore manage the session cookie ourselves: capture it from the OS's own
+// cookie store right after login (NSURLSession on iOS intercepts Set-Cookie
+// response headers into its own store and doesn't reliably expose them back
+// to JS via response.headers, so reading the response directly doesn't work —
+// CookieManager reads what the OS actually captured instead), persist it, and
+// attach it as an explicit header on every request (JSON API calls, image/
+// video loads, and file downloads alike) regardless of which host is active.
 
 let cachedCookie: string | null = null;
 let loaded = false;
@@ -44,12 +48,17 @@ export async function setSessionCookie(cookie: string | null): Promise<void> {
   }
 }
 
-/** Extracts the `name=value` pair(s) from a raw Set-Cookie response header, dropping attributes like Path/Expires/HttpOnly. */
-export function parseSetCookieHeader(rawSetCookie: string): string | null {
-  // A single Set-Cookie header looks like "session=abc123; Path=/; HttpOnly".
-  // We only need the name=value part to send back as the Cookie header.
-  const pair = rawSetCookie.split(';')[0]?.trim();
-  return pair && pair.includes('=') ? pair : null;
+/**
+ * Reads whatever cookies the OS actually stored for `url` (populated by the
+ * login response, even though that response's Set-Cookie header wasn't
+ * JS-visible) and persists them as a single Cookie-header-ready string.
+ */
+export async function captureCookiesFromStore(url: string): Promise<void> {
+  const cookies = await CookieManager.get(url);
+  const pairs = Object.values(cookies).map(cookie => `${cookie.name}=${cookie.value}`);
+  if (pairs.length > 0) {
+    await setSessionCookie(pairs.join('; '));
+  }
 }
 
 /** Headers to spread onto any request/Image/Video source that needs the session cookie. */

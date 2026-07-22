@@ -36,6 +36,21 @@ jest.mock('react-native-file-viewer', () => ({
 
 jest.mock('react-native-video', () => 'Video');
 
+jest.mock('@preeternal/react-native-cookie-manager', () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn(() => Promise.resolve({})),
+    set: jest.fn(),
+    getAll: jest.fn(() => Promise.resolve({})),
+    clearAll: jest.fn(),
+    clearByName: jest.fn(),
+    flush: jest.fn(),
+    removeSessionCookies: jest.fn(),
+    setFromResponse: jest.fn(),
+    getFromResponse: jest.fn(() => Promise.resolve({})),
+  },
+}));
+
 jest.mock('../src/services/serverUrl', () => ({
   LOCAL_URL: 'http://192.168.8.142',
   REMOTE_URL: 'https://mcloud.taile49ac8.ts.net',
