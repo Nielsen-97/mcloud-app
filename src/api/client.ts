@@ -61,11 +61,12 @@ export function viewUrl(filename: string): string {
 
 /**
  * After a successful login, the session cookie is captured from the OS's own
- * cookie store (not from the response object — on iOS, NSURLSession
- * intercepts Set-Cookie headers into its own store and doesn't reliably
- * expose them back to JS) and re-attached manually to every subsequent
- * request, since it won't be forwarded automatically when the active host
- * later switches between the LAN IP and the Tailscale hostname.
+ * cookie store rather than from the response object — Set-Cookie is a
+ * forbidden response header per the fetch/XHR spec, so response.headers
+ * never exposes it to JS on any platform. The captured value is then
+ * re-attached manually to every subsequent request, since it won't be
+ * forwarded automatically once the active host switches between the LAN IP
+ * and the Tailscale hostname.
  */
 export async function login(username: string, password: string): Promise<void> {
   const controller = new AbortController();
@@ -90,7 +91,12 @@ export async function login(username: string, password: string): Promise<void> {
   } finally {
     clearTimeout(timeout);
   }
-  await captureCookiesFromStore(loginUrl);
+  const captured = await captureCookiesFromStore(loginUrl);
+  if (!captured) {
+    throw new Error(
+      `Login blev accepteret af serveren, men appen kunne ikke læse session-cookien fra ${loginUrl} bagefter. Efterfølgende kald vil fejle med 401.`,
+    );
+  }
 }
 
 export async function logout(): Promise<void> {
