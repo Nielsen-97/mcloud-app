@@ -4,20 +4,22 @@ import { useSync } from '../context/SyncContext';
 import { COLORS } from '../config';
 
 export default function UploadBanner() {
-  const { syncing, uploaded, total, isOffline } = useSync();
+  const { syncing, uploaded, total, failed, isOffline } = useSync();
 
   if (!syncing && !isOffline) return null;
+
+  const processed = uploaded + failed;
 
   return (
     <View style={[styles.banner, isOffline && styles.offline]}>
       <Text style={styles.text}>
         {isOffline
           ? 'Offline — viser cachede filer'
-          : `Synkroniserer billeder… ${uploaded}/${total}`}
+          : `Synkroniserer billeder… ${uploaded}/${total}${failed > 0 ? ` (${failed} fejlet)` : ''}`}
       </Text>
       {syncing && total > 0 && (
         <View style={styles.track}>
-          <View style={[styles.fill, { width: `${Math.round((uploaded / total) * 100)}%` }]} />
+          <View style={[styles.fill, { width: `${Math.round((processed / total) * 100)}%` }]} />
         </View>
       )}
     </View>

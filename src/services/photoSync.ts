@@ -7,6 +7,8 @@ import { runQueue } from './uploadQueue';
 export interface SyncProgress {
   uploaded: number;
   total: number;
+  failed: number;
+  lastError: string | null;
 }
 
 export type SyncProgressListener = (progress: SyncProgress) => void;
@@ -64,7 +66,12 @@ export async function syncNewPhotos(onProgress?: SyncProgressListener): Promise<
   const allPhotos = await getAllPhotos();
   const pending = allPhotos.filter(photo => !uploadedIds.has(photo.node.id));
 
-  const result: SyncProgress = { uploaded: 0, total: pending.length };
+  const result: SyncProgress = {
+    uploaded: 0,
+    total: pending.length,
+    failed: 0,
+    lastError: null,
+  };
   onProgress?.(result);
 
   if (pending.length === 0) {
@@ -93,7 +100,11 @@ export async function syncNewPhotos(onProgress?: SyncProgressListener): Promise<
     },
     onItemFailed: (id, error) => {
       // Left out of uploadedIds on purpose — will retry on next sync pass.
+      const message = error instanceof Error ? error.message : String(error);
+      result.failed += 1;
+      result.lastError = message;
       console.warn(`MCloud sync: upload failed for ${id}`, error);
+      onProgress?.({ ...result });
     },
     onOverallProgress: async () => {
       if (sinceLastFlush >= 10) {

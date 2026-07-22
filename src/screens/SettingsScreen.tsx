@@ -12,7 +12,7 @@ import type { FileStats, StorageStats } from '../types';
 
 export default function SettingsScreen() {
   const { username, logout } = useAuth();
-  const { syncing, uploaded, total, lastSync, triggerSync } = useSync();
+  const { syncing, uploaded, total, failed, lastError, lastSync, triggerSync } = useSync();
   const [storage, setStorage] = useState<StorageStats | null>(null);
   const [stats, setStats] = useState<FileStats | null>(null);
   const [pending, setPending] = useState<number | null>(null);
@@ -87,7 +87,12 @@ export default function SettingsScreen() {
           {pending != null ? `${pending} billeder i kø` : ''}
         </Text>
         {syncing && (
-          <Text style={styles.value}>Synkroniserer {uploaded}/{total}…</Text>
+          <Text style={styles.value}>
+            Synkroniserer {uploaded}/{total}{failed > 0 ? ` (${failed} fejlet)` : ''}…
+          </Text>
+        )}
+        {lastError && (
+          <Text style={styles.errorText} numberOfLines={3}>Sidste fejl: {lastError}</Text>
         )}
         <TouchableOpacity style={styles.button} onPress={triggerSync} disabled={syncing}>
           <Text style={styles.buttonText}>{syncing ? 'Synkroniserer…' : 'Synkroniser nu'}</Text>
@@ -110,6 +115,7 @@ const styles = StyleSheet.create({
   storageTrack: { height: 8, backgroundColor: COLORS.card, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
   storageFill: { height: 8, backgroundColor: COLORS.accent },
   storageText: { color: COLORS.textMuted, fontSize: 12 },
+  errorText: { color: COLORS.red, fontSize: 12, marginBottom: 4 },
   statsRow: { flexDirection: 'row', gap: 20 },
   statItem: { color: COLORS.text, fontSize: 15 },
   button: {

@@ -17,12 +17,28 @@ export class ApiError extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 15000;
+const UPLOAD_TIMEOUT_MS = 30000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${getServerUrl()}${path}`, {
-    credentials: 'include',
-    ...init,
-    headers: { ...authHeaders(), ...init?.headers },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${getServerUrl()}${path}`, {
+      credentials: 'include',
+      ...init,
+      headers: { ...authHeaders(), ...init?.headers },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Tidsudløb: ${path} svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) {
     throw new ApiError(res.status, `${init?.method ?? 'GET'} ${path} failed (${res.status})`);
   }
@@ -56,6 +72,8 @@ export async function login(username: string, password: string): Promise<void> {
     xhr.open('POST', `${getServerUrl()}/login`);
     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
     xhr.withCredentials = true;
+    xhr.timeout = REQUEST_TIMEOUT_MS;
+    xhr.ontimeout = () => reject(new Error(`Tidsudløb: login svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`));
     xhr.onload = async () => {
       if (xhr.status < 200 || xhr.status >= 300) {
         reject(new ApiError(xhr.status, 'Forkert brugernavn eller password'));
@@ -166,6 +184,7 @@ export async function uploadFile(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${getServerUrl()}/upload`);
     xhr.withCredentials = true;
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     const cookie = authHeaders().Cookie;
     if (cookie) xhr.setRequestHeader('Cookie', cookie);
     xhr.upload.onprogress = event => {
@@ -181,6 +200,7 @@ export async function uploadFile(
       }
     };
     xhr.onerror = () => reject(new Error('Netværksfejl under upload'));
+    xhr.ontimeout = () => reject(new Error(`Tidsudløb: upload svarede ikke inden for ${UPLOAD_TIMEOUT_MS / 1000}s`));
 
     const form = new FormData();
     form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
