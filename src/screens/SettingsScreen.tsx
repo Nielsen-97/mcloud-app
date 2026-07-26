@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSync } from '../context/SyncContext';
 import { formatBytes } from '../utils/fileIcons';
 import { getPendingSyncCount } from '../services/photoSync';
+import { getSessionCookieNames } from '../services/sessionCookie';
 import type { FileStats, StorageStats } from '../types';
 
 export default function SettingsScreen() {
@@ -49,6 +50,9 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Text style={styles.label}>Logget ind som</Text>
         <Text style={styles.value}>{username ?? 'ukendt'}</Text>
+        <Text style={styles.debugText}>
+          Session-cookie: {getSessionCookieNames().join(', ') || 'ingen'}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -112,6 +116,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: COLORS.sidebar, borderRadius: 12, padding: 16, marginBottom: 4 },
   label: { color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase', marginBottom: 8 },
   value: { color: COLORS.text, fontSize: 15, marginBottom: 4 },
+  debugText: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   storageTrack: { height: 8, backgroundColor: COLORS.card, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
   storageFill: { height: 8, backgroundColor: COLORS.accent },
   storageText: { color: COLORS.textMuted, fontSize: 12 },

@@ -80,3 +80,8 @@ export function authHeaders(): Record<string, string> {
   const cookie = getSessionCookie();
   return cookie ? { Cookie: cookie } : {};
 }
+
+/** Names only (never values) of the currently stored cookie(s), for on-screen diagnostics. */
+export function getSessionCookieNames(): string[] {
+  return cachedCookie?.split('; ').map(pair => pair.split('=')[0]) ?? [];
+}
