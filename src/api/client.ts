@@ -26,7 +26,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${getServerUrl()}${path}`, {
-      credentials: 'include',
+      // 'omit', not 'include': we attach the session cookie ourselves via
+      // authHeaders() below. Letting the OS also auto-attach its own stored
+      // cookie caused Flask to receive two comma-joined `session=` values in
+      // one Cookie header, which fails signature verification and silently
+      // resets to an empty session — a stale/no-op cookie colliding with the
+      // correct one is worse than sending no automatic cookie at all.
+      credentials: 'omit',
       ...init,
       headers: { ...authHeaders(), ...init?.headers },
       signal: controller.signal,
@@ -67,6 +73,12 @@ export function viewUrl(filename: string): string {
  * re-attached manually to every subsequent request, since it won't be
  * forwarded automatically once the active host switches between the LAN IP
  * and the Tailscale hostname.
+ *
+ * This request keeps credentials: 'include' — unlike every other call, this
+ * one needs the OS to actually persist the response's Set-Cookie so
+ * captureCookiesFromStore() has something to read back afterward. It's safe
+ * here specifically because we don't also attach a manual Cookie header on
+ * this one request, so there's nothing for the OS's cookie to collide with.
  */
 export async function login(username: string, password: string): Promise<void> {
   const controller = new AbortController();
@@ -191,7 +203,9 @@ export async function uploadFile(
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${getServerUrl()}/upload`);
-    xhr.withCredentials = true;
+    // withCredentials left false (the default): the Cookie header below is
+    // attached manually. Enabling it too caused Flask to receive two
+    // comma-joined `session=` values, which fails signature verification.
     xhr.timeout = UPLOAD_TIMEOUT_MS;
     const cookie = authHeaders().Cookie;
     if (cookie) xhr.setRequestHeader('Cookie', cookie);
