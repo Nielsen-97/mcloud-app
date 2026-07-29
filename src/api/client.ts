@@ -195,38 +195,40 @@ export interface UploadFileInput {
   type: string;
 }
 
-export async function uploadFile(
-  file: UploadFileInput,
-  albumId?: number,
-  onProgress?: (fraction: number) => void,
-): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${getServerUrl()}/upload`);
-    // withCredentials left false (the default): the Cookie header below is
-    // attached manually. Enabling it too caused Flask to receive two
-    // comma-joined `session=` values, which fails signature verification.
-    xhr.timeout = UPLOAD_TIMEOUT_MS;
-    const cookie = authHeaders().Cookie;
-    if (cookie) xhr.setRequestHeader('Cookie', cookie);
-    xhr.upload.onprogress = event => {
-      if (onProgress && event.lengthComputable) {
-        onProgress(event.loaded / event.total);
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new ApiError(xhr.status, `Upload fejlede (${xhr.status})`));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Netværksfejl under upload'));
-    xhr.ontimeout = () => reject(new Error(`Tidsudløb: upload svarede ikke inden for ${UPLOAD_TIMEOUT_MS / 1000}s`));
-
+/**
+ * Uses fetch(), not XMLHttpRequest — XHR's setRequestHeader('Cookie', ...)
+ * isn't reliably honored by React Native's networking bridge even though the
+ * identical header works fine through fetch(), which is how uploads ended up
+ * still 401ing here after every other request (which all go through fetch()
+ * via request()) started working. Per-byte upload progress was the one thing
+ * XHR gave us that fetch() can't easily replicate in RN, but nothing in the
+ * app actually consumed it — only per-file progress (via runQueue) is used —
+ * so dropping it costs nothing.
+ */
+export async function uploadFile(file: UploadFileInput, albumId?: number): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  try {
     const form = new FormData();
     form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
     if (albumId != null) form.append('album_id', String(albumId));
-    xhr.send(form);
-  });
+
+    const res = await fetch(`${getServerUrl()}/upload`, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: authHeaders(),
+      body: form,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, `Upload fejlede (${res.status})`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Tidsudløb: upload svarede ikke inden for ${UPLOAD_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
