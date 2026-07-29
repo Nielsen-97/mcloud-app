@@ -2,10 +2,12 @@ import { getServerUrl } from '../services/serverUrl';
 import { authHeaders, captureCookiesFromStore, setSessionCookie } from '../services/sessionCookie';
 import type {
   Album,
+  BackupStatus,
   FileStats,
   FileType,
   MCloudFile,
-  MCloudUser,
+  Recipe,
+  RecipeTag,
   StorageStats,
 } from '../types';
 
@@ -174,8 +176,8 @@ export async function getStorage(): Promise<StorageStats> {
   return request<StorageStats>('/storage');
 }
 
-export async function getUsers(): Promise<MCloudUser[]> {
-  return request<MCloudUser[]>('/users');
+export async function getUsers(): Promise<string[]> {
+  return request<string[]>('/users');
 }
 
 /**
@@ -187,6 +189,50 @@ export async function generateAlbumShareLink(albumId: number): Promise<string> {
     method: 'POST',
   });
   return result.url;
+}
+
+/**
+ * Not in the documented API — new endpoints needed for the recipes feature.
+ * See the server changes description for the exact contract these expect.
+ */
+export async function getRecipes(): Promise<Recipe[]> {
+  return request<Recipe[]>('/recipes');
+}
+
+export async function previewRecipeTitle(url: string): Promise<{ title: string; domain: string }> {
+  return request<{ title: string; domain: string }>('/recipes/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function createRecipe(url: string, title: string, tags: RecipeTag[]): Promise<Recipe> {
+  return request<Recipe>('/recipes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, title, tags }),
+  });
+}
+
+export async function deleteRecipe(id: number): Promise<void> {
+  await request(`/recipes/${id}`, { method: 'DELETE' });
+}
+
+export function recipeSnapshotUrl(id: number): string {
+  return `${getServerUrl()}/recipes/${id}/snapshot`;
+}
+
+/**
+ * Not in the documented API — assumes new admin endpoints. See the server
+ * changes description for the exact contract these expect.
+ */
+export async function getBackupStatus(): Promise<BackupStatus> {
+  return request<BackupStatus>('/admin/backup-status');
+}
+
+export async function triggerBackup(): Promise<void> {
+  await request('/admin/backup', { method: 'POST' });
 }
 
 export interface UploadFileInput {

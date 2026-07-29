@@ -16,8 +16,8 @@ export interface Album {
   name: string;
   owner: string;
   is_shared: boolean;
-  shared_with: string[];
-  cover_filename?: string | null;
+  created_date?: string;
+  cover_image?: string | null;
   share_token?: string | null;
 }
 
@@ -34,6 +34,26 @@ export interface FileStats {
   [key: string]: number | undefined;
 }
 
-export interface MCloudUser {
-  username: string;
+export interface BackupStatus {
+  last_backup: string | null;
+  status: 'ok' | 'running' | 'failed' | 'never';
+  destination?: string;
 }
+
+export const RECIPE_TAGS = [
+  'aftensmad', 'frokost', 'morgenmad', 'kage', 'brød',
+  'pizza', 'hurtig', 'vegetar', 'dessert', 'suppe', 'fisk', 'andet',
+] as const;
+
+export type RecipeTag = typeof RECIPE_TAGS[number];
+
+export interface Recipe {
+  id: number;
+  title: string;
+  url: string;
+  tags: RecipeTag[];
+  snapshot_filename: string | null;
+  added_by: string;
+  created_date: string;
+}
+

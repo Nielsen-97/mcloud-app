@@ -75,6 +75,24 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
     setSharing(false);
   };
 
+  const deleteAlbum = () => {
+    Alert.alert('Slet album', `Er du sikker på at du vil slette "${album.name}"?`, [
+      { text: 'Annuller', style: 'cancel' },
+      {
+        text: 'Slet',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.deleteAlbum(album.id);
+            navigation.goBack();
+          } catch {
+            Alert.alert('Fejl', 'Kunne ikke slette album');
+          }
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -91,6 +109,9 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
         </TouchableOpacity>
         <TouchableOpacity style={styles.toolbarButton} onPress={shareAlbum} disabled={sharing}>
           <Text style={styles.toolbarButtonText}>{sharing ? 'Genererer…' : 'Del link'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.toolbarButton, styles.deleteToolbarButton]} onPress={deleteAlbum}>
+          <Text style={styles.toolbarButtonText}>Slet</Text>
         </TouchableOpacity>
       </View>
 
@@ -139,6 +160,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   toolbarButton: { backgroundColor: COLORS.sidebar, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  deleteToolbarButton: { backgroundColor: COLORS.red },
   toolbarButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 13 },
   pickerContainer: { flex: 1, backgroundColor: COLORS.background },
   pickerHeader: {

@@ -9,7 +9,9 @@ import { useSync } from '../context/SyncContext';
 import { formatBytes } from '../utils/fileIcons';
 import { getPendingSyncCount } from '../services/photoSync';
 import { getSessionCookieNames } from '../services/sessionCookie';
-import type { FileStats, StorageStats } from '../types';
+import type { BackupStatus, FileStats, StorageStats } from '../types';
+
+const ADMIN_USERNAME = 'mathias';
 
 export default function SettingsScreen() {
   const { username, logout } = useAuth();
@@ -18,6 +20,11 @@ export default function SettingsScreen() {
   const [stats, setStats] = useState<FileStats | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const isAdmin = username === ADMIN_USERNAME;
+  const [users, setUsers] = useState<string[]>([]);
+  const [backup, setBackup] = useState<BackupStatus | null>(null);
+  const [backupUnavailable, setBackupUnavailable] = useState(false);
+  const [runningBackup, setRunningBackup] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,9 +39,36 @@ export default function SettingsScreen() {
     setLoading(false);
   }, []);
 
+  const loadAdminData = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      setUsers(await api.getUsers());
+    } catch {
+      // best-effort
+    }
+    try {
+      setBackup(await api.getBackupStatus());
+      setBackupUnavailable(false);
+    } catch {
+      setBackupUnavailable(true);
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadAdminData();
+  }, [load, loadAdminData]);
+
+  const handleTriggerBackup = async () => {
+    setRunningBackup(true);
+    try {
+      await api.triggerBackup();
+      setBackup(await api.getBackupStatus());
+    } catch {
+      Alert.alert('Ikke tilgængelig', 'Serveren understøtter endnu ikke manuel backup fra appen.');
+    }
+    setRunningBackup(false);
+  };
 
   const handleLogout = () => {
     Alert.alert('Log ud', 'Er du sikker på at du vil logge ud?', [
@@ -103,6 +137,30 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {isAdmin && (
+        <View style={styles.card}>
+          <Text style={styles.label}>Admin</Text>
+          <Text style={styles.value}>Brugere ({users.length})</Text>
+          {users.map(u => (
+            <Text key={u} style={styles.debugText}>· {u}</Text>
+          ))}
+          <View style={styles.divider} />
+          {backupUnavailable ? (
+            <Text style={styles.debugText}>Backup-status ikke tilgængelig endnu (kræver server-opdatering).</Text>
+          ) : (
+            <>
+              <Text style={styles.value}>
+                Backup: {backup?.status ?? 'ukendt'}
+                {backup?.last_backup ? ` · sidst ${new Date(backup.last_backup).toLocaleString('da-DK')}` : ''}
+              </Text>
+              <TouchableOpacity style={styles.button} onPress={handleTriggerBackup} disabled={runningBackup}>
+                <Text style={styles.buttonText}>{runningBackup ? 'Kører…' : 'Kør backup nu'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+
       <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
         <Text style={styles.buttonText}>Log ud</Text>
       </TouchableOpacity>
@@ -117,6 +175,7 @@ const styles = StyleSheet.create({
   label: { color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase', marginBottom: 8 },
   value: { color: COLORS.text, fontSize: 15, marginBottom: 4 },
   debugText: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
   storageTrack: { height: 8, backgroundColor: COLORS.card, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
   storageFill: { height: 8, backgroundColor: COLORS.accent },
   storageText: { color: COLORS.textMuted, fontSize: 12 },

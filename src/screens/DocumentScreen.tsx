@@ -1,29 +1,44 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, FlatList, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
+  View, SectionList, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
   RefreshControl, Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import * as api from '../api/client';
 import { authHeaders, downloadUrl } from '../api/client';
-import { COLORS } from '../config';
-import { iconForFilename, formatBytes } from '../utils/fileIcons';
+import { COLORS, STORAGE_KEYS } from '../config';
+import {
+  iconForFilename, formatBytes, categoryForFilename, DOCUMENT_CATEGORY_ORDER,
+} from '../utils/fileIcons';
 import { parseServerDate } from '../utils/date';
 import type { MCloudFile } from '../types';
+
+const CACHE_KEY = STORAGE_KEYS.cachedFiles('dokument');
 
 export default function DocumentScreen() {
   const [files, setFiles] = useState<MCloudFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [openingId, setOpeningId] = useState<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
-      setFiles(await api.getFiles({ type: 'dokument' }));
+      const data = await api.getFiles({ type: 'dokument' });
+      setFiles(data);
+      setOffline(false);
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
-      Alert.alert('Fejl', 'Kunne ikke hente dokumenter');
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        setFiles(JSON.parse(cached));
+        setOffline(true);
+      } else {
+        Alert.alert('Fejl', 'Kunne ikke hente dokumenter');
+      }
     }
     isRefresh ? setRefreshing(false) : setLoading(false);
   }, []);
@@ -48,6 +63,19 @@ export default function DocumentScreen() {
     setOpeningId(null);
   };
 
+  const sections = useMemo(() => {
+    const byCategory = new Map<string, MCloudFile[]>();
+    for (const file of files) {
+      const category = categoryForFilename(file.original_name);
+      const list = byCategory.get(category) ?? [];
+      list.push(file);
+      byCategory.set(category, list);
+    }
+    return DOCUMENT_CATEGORY_ORDER
+      .filter(category => byCategory.has(category))
+      .map(category => ({ title: category, data: byCategory.get(category)! }));
+  }, [files]);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -57,33 +85,51 @@ export default function DocumentScreen() {
   }
 
   return (
-    <FlatList
-      style={styles.container}
-      data={files}
-      keyExtractor={item => item.id.toString()}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.accent} />
-      }
-      ListEmptyComponent={<Text style={styles.emptyText}>Ingen dokumenter endnu</Text>}
-      renderItem={({ item }) => (
-        <TouchableOpacity style={styles.row} onPress={() => openFile(item)} disabled={openingId === item.id}>
-          <Text style={styles.icon}>{iconForFilename(item.original_name)}</Text>
-          <View style={styles.info}>
-            <Text style={styles.filename} numberOfLines={1}>{item.original_name}</Text>
-            <Text style={styles.meta}>
-              {formatBytes(item.size)} · {parseServerDate(item.upload_date).toLocaleDateString('da-DK')}
-            </Text>
-          </View>
-          {openingId === item.id && <ActivityIndicator color={COLORS.accent} />}
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {offline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline — viser cachede dokumenter</Text>
+        </View>
       )}
-    />
+      <SectionList
+        sections={sections}
+        keyExtractor={item => item.id.toString()}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.accent} />
+        }
+        ListEmptyComponent={<Text style={styles.emptyText}>Ingen dokumenter endnu</Text>}
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionHeader}>{section.title}</Text>
+        )}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.row} onPress={() => openFile(item)} disabled={openingId === item.id}>
+            <Text style={styles.icon}>{iconForFilename(item.original_name)}</Text>
+            <View style={styles.info}>
+              <Text style={styles.filename} numberOfLines={1}>{item.original_name}</Text>
+              <Text style={styles.meta}>
+                {formatBytes(item.size)} · {parseServerDate(item.upload_date).toLocaleDateString('da-DK')}
+              </Text>
+            </View>
+            {openingId === item.id && <ActivityIndicator color={COLORS.accent} />}
+          </TouchableOpacity>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  offlineBanner: {
+    backgroundColor: '#3a2020', paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  offlineText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
+  sectionHeader: {
+    color: COLORS.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase',
+    backgroundColor: COLORS.background, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -18,6 +18,7 @@ import GalleryScreen from './src/screens/GalleryScreen';
 import VideoScreen from './src/screens/VideoScreen';
 import DocumentScreen from './src/screens/DocumentScreen';
 import AlbumStackNavigator from './src/screens/AlbumStackNavigator';
+import RecipeStackNavigator from './src/screens/RecipeStackNavigator';
 import SettingsScreen from './src/screens/SettingsScreen';
 import type { RootTabParamList } from './src/navigation/types';
 
@@ -39,6 +40,7 @@ function MainApp() {
         <Tab.Screen name="Videoer" component={VideoScreen} />
         <Tab.Screen name="Dokumenter" component={DocumentScreen} />
         <Tab.Screen name="Albums" component={AlbumStackNavigator} options={{ headerShown: false }} />
+        <Tab.Screen name="Opskrifter" component={RecipeStackNavigator} options={{ headerShown: false }} />
         <Tab.Screen name="Indstillinger" component={SettingsScreen} />
       </Tab.Navigator>
     </NavigationContainer>

@@ -19,4 +19,6 @@ export const STORAGE_KEYS = {
   uploadedLocalIds: 'uploadedLocalIds',
   lastSync: 'lastSync',
   cachedFiles: (type: string) => `cachedFiles:${type}`,
+  cachedAlbums: 'cachedAlbums',
+  cachedRecipes: 'cachedRecipes',
 } as const;

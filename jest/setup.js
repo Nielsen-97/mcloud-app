@@ -36,6 +36,14 @@ jest.mock('react-native-file-viewer', () => ({
 
 jest.mock('react-native-video', () => 'Video');
 
+jest.mock('react-native-create-thumbnail', () => ({
+  createThumbnail: jest.fn(() => Promise.resolve({ path: 'file:///tmp/thumb.jpg', size: 0, mime: 'image/jpeg', width: 0, height: 0 })),
+}));
+
+jest.mock('react-native-webview', () => ({
+  WebView: 'WebView',
+}));
+
 jest.mock('@preeternal/react-native-cookie-manager', () => ({
   __esModule: true,
   default: {

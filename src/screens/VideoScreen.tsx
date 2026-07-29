@@ -5,6 +5,7 @@ import * as api from '../api/client';
 import { STORAGE_KEYS, COLORS } from '../config';
 import DateGroupedGrid, { GRID_THUMB_SIZE } from '../components/DateGroupedGrid';
 import VideoPlayerModal from '../components/VideoPlayerModal';
+import VideoThumbnail from '../components/VideoThumbnail';
 import type { MCloudFile } from '../types';
 
 const CACHE_KEY = STORAGE_KEYS.cachedFiles('video');
@@ -13,6 +14,7 @@ export default function VideoScreen() {
   const [files, setFiles] = useState<MCloudFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [selected, setSelected] = useState<MCloudFile | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -20,10 +22,14 @@ export default function VideoScreen() {
     try {
       const data = await api.getFiles({ type: 'video' });
       setFiles(data);
+      setOffline(false);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
       const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) setFiles(JSON.parse(cached));
+      if (cached) {
+        setFiles(JSON.parse(cached));
+        setOffline(true);
+      }
     }
     isRefresh ? setRefreshing(false) : setLoading(false);
   }, []);
@@ -42,12 +48,19 @@ export default function VideoScreen() {
 
   return (
     <View style={styles.container}>
+      {offline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline — viser cachede videoer</Text>
+        </View>
+      )}
       <DateGroupedGrid
         files={files}
         renderThumbnail={file => (
           <View style={styles.videoTile}>
-            <Text style={styles.playIcon}>▶</Text>
-            <Text style={styles.filename} numberOfLines={1}>{file.original_name}</Text>
+            <VideoThumbnail filename={file.filename} size={GRID_THUMB_SIZE} />
+            <View style={styles.playIconOverlay}>
+              <Text style={styles.playIcon}>▶</Text>
+            </View>
           </View>
         )}
         onPress={setSelected}
@@ -62,14 +75,24 @@ export default function VideoScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  offlineBanner: {
+    backgroundColor: '#3a2020', paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  offlineText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
   videoTile: {
     width: GRID_THUMB_SIZE,
     height: GRID_THUMB_SIZE,
-    backgroundColor: COLORS.card,
+  },
+  playIconOverlay: {
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 4,
   },
-  playIcon: { color: COLORS.accent, fontSize: 24, marginBottom: 4 },
-  filename: { color: COLORS.textMuted, fontSize: 10, textAlign: 'center' },
+  playIcon: {
+    color: '#fff',
+    fontSize: 20,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowRadius: 4,
+  },
 });

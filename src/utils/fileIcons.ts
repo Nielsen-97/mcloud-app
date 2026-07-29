@@ -13,6 +13,22 @@ export function iconForFilename(name: string): string {
   return ICONS[ext] ?? '📄';
 }
 
+export type DocumentCategory = 'PDF' | 'Word' | 'Excel' | 'Billeder' | 'Andet';
+
+export const DOCUMENT_CATEGORY_ORDER: DocumentCategory[] = ['PDF', 'Word', 'Excel', 'Billeder', 'Andet'];
+
+const CATEGORY_MAP: Record<string, DocumentCategory> = {
+  pdf: 'PDF',
+  doc: 'Word', docx: 'Word',
+  xls: 'Excel', xlsx: 'Excel', csv: 'Excel',
+  jpg: 'Billeder', jpeg: 'Billeder', png: 'Billeder', gif: 'Billeder', heic: 'Billeder', webp: 'Billeder',
+};
+
+export function categoryForFilename(name: string): DocumentCategory {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return CATEGORY_MAP[ext] ?? 'Andet';
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

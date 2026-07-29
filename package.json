@@ -21,12 +21,14 @@
     "react": "19.2.3",
     "react-native": "0.86.0",
     "react-native-background-fetch": "^4.4.2",
+    "react-native-create-thumbnail": "^2.2.0",
     "react-native-file-viewer": "^2.1.5",
     "react-native-fs": "^2.20.0",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.26.0",
     "react-native-share": "^12.3.1",
-    "react-native-video": "^6.19.2"
+    "react-native-video": "^6.19.2",
+    "react-native-webview": "^14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

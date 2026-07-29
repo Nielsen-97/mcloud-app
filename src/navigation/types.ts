@@ -1,8 +1,13 @@
-import type { Album } from '../types';
+import type { Album, Recipe } from '../types';
 
 export type AlbumStackParamList = {
   AlbumList: undefined;
   AlbumDetail: { album: Album };
+};
+
+export type RecipeStackParamList = {
+  RecipeList: undefined;
+  RecipeWebView: { recipe: Recipe };
 };
 
 export type RootTabParamList = {
@@ -10,5 +15,6 @@ export type RootTabParamList = {
   Videoer: undefined;
   Dokumenter: undefined;
   Albums: undefined;
+  Opskrifter: undefined;
   Indstillinger: undefined;
 };

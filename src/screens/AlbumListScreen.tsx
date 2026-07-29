@@ -3,20 +3,22 @@ import {
   View, FlatList, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
   Image, Modal, TextInput, Switch, Alert, RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../api/client';
 import { authHeaders, downloadUrl } from '../api/client';
-import { COLORS } from '../config';
-import type { Album, MCloudUser } from '../types';
+import { COLORS, STORAGE_KEYS } from '../config';
+import type { Album } from '../types';
 import type { AlbumStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<AlbumStackParamList, 'AlbumList'>;
 
 export default function AlbumListScreen({ navigation }: Props) {
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [users, setUsers] = useState<MCloudUser[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [name, setName] = useState('');
   const [isShared, setIsShared] = useState(false);
@@ -29,8 +31,16 @@ export default function AlbumListScreen({ navigation }: Props) {
       const [albumData, userData] = await Promise.all([api.getAlbums(), api.getUsers()]);
       setAlbums(albumData);
       setUsers(userData);
+      setOffline(false);
+      await AsyncStorage.setItem(STORAGE_KEYS.cachedAlbums, JSON.stringify(albumData));
     } catch {
-      Alert.alert('Fejl', 'Kunne ikke hente albums');
+      const cached = await AsyncStorage.getItem(STORAGE_KEYS.cachedAlbums);
+      if (cached) {
+        setAlbums(JSON.parse(cached));
+        setOffline(true);
+      } else {
+        Alert.alert('Fejl', 'Kunne ikke hente albums');
+      }
     }
     isRefresh ? setRefreshing(false) : setLoading(false);
   }, []);
@@ -61,6 +71,24 @@ export default function AlbumListScreen({ navigation }: Props) {
     setCreating(false);
   };
 
+  const confirmDeleteAlbum = (album: Album) => {
+    Alert.alert('Slet album', `Er du sikker på at du vil slette "${album.name}"?`, [
+      { text: 'Annuller', style: 'cancel' },
+      {
+        text: 'Slet',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.deleteAlbum(album.id);
+            setAlbums(prev => prev.filter(a => a.id !== album.id));
+          } catch {
+            Alert.alert('Fejl', 'Kunne ikke slette album');
+          }
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -71,6 +99,11 @@ export default function AlbumListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {offline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline — viser cachede albums</Text>
+        </View>
+      )}
       <FlatList
         data={albums}
         keyExtractor={item => item.id.toString()}
@@ -83,10 +116,11 @@ export default function AlbumListScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => navigation.navigate('AlbumDetail', { album: item })}>
-            {item.cover_filename ? (
+            onPress={() => navigation.navigate('AlbumDetail', { album: item })}
+            onLongPress={() => confirmDeleteAlbum(item)}>
+            {item.cover_image ? (
               <Image
-                source={{ uri: downloadUrl(item.cover_filename), headers: authHeaders() }}
+                source={{ uri: downloadUrl(item.cover_image), headers: authHeaders() }}
                 style={styles.cover}
               />
             ) : (
@@ -94,6 +128,9 @@ export default function AlbumListScreen({ navigation }: Props) {
                 <Text style={styles.coverPlaceholderText}>📁</Text>
               </View>
             )}
+            <TouchableOpacity style={styles.deleteButton} onPress={() => confirmDeleteAlbum(item)}>
+              <Text style={styles.deleteButtonText}>✕</Text>
+            </TouchableOpacity>
             <Text style={styles.albumName} numberOfLines={1}>{item.name}</Text>
             {item.is_shared && <Text style={styles.sharedLabel}>Delt</Text>}
           </TouchableOpacity>
@@ -121,14 +158,14 @@ export default function AlbumListScreen({ navigation }: Props) {
             </View>
             {isShared && (
               <View style={styles.userList}>
-                {users.map(u => (
+                {users.map(username => (
                   <TouchableOpacity
-                    key={u.username}
+                    key={username}
                     style={styles.userRow}
-                    onPress={() => toggleSharedUser(u.username)}>
-                    <Text style={styles.userName}>{u.username}</Text>
+                    onPress={() => toggleSharedUser(username)}>
+                    <Text style={styles.userName}>{username}</Text>
                     <Text style={styles.checkbox}>
-                      {sharedWith.includes(u.username) ? '☑' : '☐'}
+                      {sharedWith.includes(username) ? '☑' : '☐'}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -154,9 +191,19 @@ export default function AlbumListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  offlineBanner: {
+    backgroundColor: '#3a2020', paddingHorizontal: 16, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  offlineText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   list: { padding: 8 },
-  card: { flex: 1, margin: 6, maxWidth: '46%' },
+  card: { flex: 1, margin: 6, maxWidth: '46%', position: 'relative' },
+  deleteButton: {
+    position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center',
+  },
+  deleteButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   cover: { width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: COLORS.card },
   coverPlaceholder: { justifyContent: 'center', alignItems: 'center' },
   coverPlaceholderText: { fontSize: 32 },
