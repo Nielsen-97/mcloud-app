@@ -5,6 +5,7 @@ const PROBE_TIMEOUT_MS = 1500;
 
 let activeUrl = REMOTE_URL;
 let inFlight: Promise<string> | null = null;
+let hasResolvedOnce = false;
 const listeners = new Set<(url: string) => void>();
 
 /** Synchronous read of the currently active base URL. Safe to call at render time. */
@@ -49,9 +50,27 @@ export function resolveServerUrl(): Promise<string> {
   inFlight = (async () => {
     const url = (await isReachable(LOCAL_URL)) ? LOCAL_URL : REMOTE_URL;
     setActiveUrl(url);
+    hasResolvedOnce = true;
     return url;
   })().finally(() => {
     inFlight = null;
   });
   return inFlight;
+}
+
+/**
+ * Resolves once the first probe (ever) has completed — instantly if one
+ * already has, otherwise piggybacking on whichever resolveServerUrl() call
+ * is in flight. App.tsx intentionally doesn't block rendering on the probe
+ * (so the UI paints immediately), but that meant a screen's very first
+ * network call could fire before the probe settled and use the stale
+ * default (Tailscale) URL — if Tailscale wasn't actually connected while on
+ * home WiFi, that first request would fail and flash the offline banner
+ * even though the network was fine. Callers that are about to make the
+ * FIRST real network request of the app's lifetime should await this;
+ * every call after the first resolves immediately and adds no latency.
+ */
+export function waitForInitialResolution(): Promise<void> {
+  if (hasResolvedOnce) return Promise.resolve();
+  return resolveServerUrl().then(() => undefined);
 }

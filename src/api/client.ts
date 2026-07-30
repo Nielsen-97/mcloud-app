@@ -1,4 +1,4 @@
-import { getServerUrl } from '../services/serverUrl';
+import { getServerUrl, waitForInitialResolution } from '../services/serverUrl';
 import { authHeaders, captureCookiesFromStore, setSessionCookie } from '../services/sessionCookie';
 import type {
   Album,
@@ -28,6 +28,7 @@ const REQUEST_TIMEOUT_MS = 15000;
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  await waitForInitialResolution();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
@@ -88,6 +89,7 @@ export function viewUrl(filename: string): string {
  * this one request, so there's nothing for the OS's cookie to collide with.
  */
 export async function login(username: string, password: string): Promise<void> {
+  await waitForInitialResolution();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const loginUrl = getServerUrl();
@@ -292,6 +294,7 @@ export interface UploadFileInput {
  * so dropping it costs nothing.
  */
 export async function uploadFile(file: UploadFileInput, albumId?: number): Promise<void> {
+  await waitForInitialResolution();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
   try {
