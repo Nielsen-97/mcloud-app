@@ -2,6 +2,7 @@ import { getServerUrl } from '../services/serverUrl';
 import { authHeaders, captureCookiesFromStore, setSessionCookie } from '../services/sessionCookie';
 import type {
   Album,
+  AdminStats,
   BackupStatus,
   FileStats,
   FileType,
@@ -234,16 +235,40 @@ export function recipeSnapshotUrl(id: number): string {
   return `${getServerUrl()}/recipes/${id}/snapshot`;
 }
 
-/**
- * Not in the documented API — assumes new admin endpoints. See the server
- * changes description for the exact contract these expect.
- */
-export async function getBackupStatus(): Promise<BackupStatus> {
-  return request<BackupStatus>('/admin/backup-status');
+// Real /admin/* contract, confirmed against app.py — mathias-only,
+// enforced server-side by admin_required() (same session check as
+// api_login_required, plus username === 'mathias').
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return request<AdminStats>('/admin/stats');
 }
 
-export async function triggerBackup(): Promise<void> {
-  await request('/admin/backup', { method: 'POST' });
+export async function getAdminUsers(): Promise<string[]> {
+  return request<string[]>('/admin/users');
+}
+
+export async function createUser(username: string, password: string): Promise<void> {
+  await request('/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function deleteUser(username: string): Promise<void> {
+  await request(`/admin/users/${encodeURIComponent(username)}`, { method: 'DELETE' });
+}
+
+export async function resetPassword(username: string, password: string): Promise<void> {
+  await request('/admin/password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function getBackupStatus(): Promise<BackupStatus> {
+  return request<BackupStatus>('/admin/backup/status');
 }
 
 export interface UploadFileInput {

@@ -35,9 +35,17 @@ export interface FileStats {
 }
 
 export interface BackupStatus {
-  last_backup: string | null;
-  status: 'ok' | 'running' | 'failed' | 'never';
-  destination?: string;
+  configured: boolean;
+  log: string;
+}
+
+export interface AdminStats {
+  disk_used: number;
+  disk_total: number;
+  mem: string;
+  uptime: string;
+  users: number;
+  files: number;
 }
 
 /** Predefined starter tags — users can add their own on top of these (see services/customTags.ts). */
