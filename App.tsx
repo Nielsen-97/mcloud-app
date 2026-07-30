@@ -116,24 +116,17 @@ function Root() {
 }
 
 export default function App() {
-  const [urlReady, setUrlReady] = useState(false);
-
   useEffect(() => {
-    resolveServerUrl().finally(() => setUrlReady(true));
+    // Fire-and-forget: don't block the first paint on this. It resolves in
+    // well under 1.5s and every screen already re-reads getServerUrl() at
+    // call time, so login/data screens pick up the right host as soon as
+    // it's known instead of the whole app waiting on a blank/spinner screen
+    // for it up front on every single cold start.
+    resolveServerUrl();
     // Re-probe local vs. Tailscale whenever connectivity changes (e.g. arriving home).
     const unsubscribe = NetInfo.addEventListener(() => resolveServerUrl());
     return unsubscribe;
   }, []);
-
-  if (!urlReady) {
-    return (
-      <SafeAreaProvider>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-        </View>
-      </SafeAreaProvider>
-    );
-  }
 
   return (
     <SafeAreaProvider>

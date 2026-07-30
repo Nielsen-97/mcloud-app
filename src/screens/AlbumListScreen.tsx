@@ -26,7 +26,7 @@ export default function AlbumListScreen({ navigation }: Props) {
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
-    isRefresh ? setRefreshing(true) : setLoading(true);
+    if (isRefresh) setRefreshing(true);
     try {
       const [albumData, userData] = await Promise.all([api.getAlbums(), api.getUsers()]);
       setAlbums(albumData);
@@ -34,18 +34,19 @@ export default function AlbumListScreen({ navigation }: Props) {
       setOffline(false);
       await AsyncStorage.setItem(STORAGE_KEYS.cachedAlbums, JSON.stringify(albumData));
     } catch {
-      const cached = await AsyncStorage.getItem(STORAGE_KEYS.cachedAlbums);
-      if (cached) {
-        setAlbums(JSON.parse(cached));
-        setOffline(true);
-      } else {
-        Alert.alert('Fejl', 'Kunne ikke hente albums');
-      }
+      setOffline(true);
     }
-    isRefresh ? setRefreshing(false) : setLoading(false);
+    setLoading(false);
+    if (isRefresh) setRefreshing(false);
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEYS.cachedAlbums).then(cached => {
+      if (cached) {
+        setAlbums(JSON.parse(cached));
+        setLoading(false);
+      }
+    });
     load();
   }, [load]);
 
@@ -99,7 +100,7 @@ export default function AlbumListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {offline && (
+      {offline && albums.length > 0 && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>Offline — viser cachede albums</Text>
         </View>

@@ -18,23 +18,30 @@ export default function GalleryScreen() {
   const [selected, setSelected] = useState<MCloudFile | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
-    isRefresh ? setRefreshing(true) : setLoading(true);
+    if (isRefresh) setRefreshing(true);
     try {
       const data = await api.getFiles({ type: 'billede' });
       setFiles(data);
       setOffline(false);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
-      const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) {
-        setFiles(JSON.parse(cached));
-        setOffline(true);
-      }
+      setOffline(true);
+      // keep whatever's already shown (cache loaded on mount, or the last successful fetch)
     }
-    isRefresh ? setRefreshing(false) : setLoading(false);
+    setLoading(false);
+    if (isRefresh) setRefreshing(false);
   }, []);
 
   useEffect(() => {
+    // Show cached data the instant it's read (no network round-trip needed
+    // for that), instead of blocking the first paint on the network fetch —
+    // the fetch below still runs immediately after and silently replaces it.
+    AsyncStorage.getItem(CACHE_KEY).then(cached => {
+      if (cached) {
+        setFiles(JSON.parse(cached));
+        setLoading(false);
+      }
+    });
     load();
   }, [load]);
 
@@ -48,7 +55,7 @@ export default function GalleryScreen() {
 
   return (
     <View style={styles.container}>
-      {offline && (
+      {offline && files.length > 0 && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>Offline — viser cachede billeder</Text>
         </View>

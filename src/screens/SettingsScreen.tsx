@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSync } from '../context/SyncContext';
 import { formatBytes } from '../utils/fileIcons';
 import { getPendingSyncCount } from '../services/photoSync';
+import { getBackgroundFetchStatus } from '../services/backgroundSync';
 import { getSessionCookieNames } from '../services/sessionCookie';
 import type { BackupStatus, FileStats, StorageStats } from '../types';
 
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const [stats, setStats] = useState<FileStats | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [backgroundFetchStatus, setBackgroundFetchStatus] = useState<string | null>(null);
   const isAdmin = username === ADMIN_USERNAME;
   const [users, setUsers] = useState<string[]>([]);
   const [backup, setBackup] = useState<BackupStatus | null>(null);
@@ -36,6 +38,7 @@ export default function SettingsScreen() {
       // best-effort — leave existing values if server unreachable
     }
     getPendingSyncCount().then(setPending).catch(() => setPending(null));
+    getBackgroundFetchStatus().then(setBackgroundFetchStatus);
     setLoading(false);
   }, []);
 
@@ -124,6 +127,13 @@ export default function SettingsScreen() {
         <Text style={styles.value}>
           {pending != null ? `${pending} billeder i kø` : ''}
         </Text>
+        {backgroundFetchStatus && backgroundFetchStatus !== 'available' && (
+          <Text style={styles.errorText}>
+            Baggrundsopdatering er {backgroundFetchStatus === 'denied' ? 'deaktiveret' : 'begrænset'} for MCloud
+            i iOS-indstillinger — automatisk synkronisering i baggrunden virker ikke før dette slås til
+            (Indstillinger → MCloud → Baggrundsopdatering).
+          </Text>
+        )}
         {syncing && (
           <Text style={styles.value}>
             Synkroniserer {uploaded}/{total}{failed > 0 ? ` (${failed} fejlet)` : ''}…

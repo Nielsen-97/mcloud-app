@@ -40,12 +40,13 @@ export interface BackupStatus {
   destination?: string;
 }
 
+/** Predefined starter tags — users can add their own on top of these (see services/customTags.ts). */
 export const RECIPE_TAGS = [
   'aftensmad', 'frokost', 'morgenmad', 'kage', 'brød',
   'pizza', 'hurtig', 'vegetar', 'dessert', 'suppe', 'fisk', 'andet',
-] as const;
+];
 
-export type RecipeTag = typeof RECIPE_TAGS[number];
+export type RecipeTag = string;
 
 export interface Recipe {
   id: number;
@@ -53,6 +54,7 @@ export interface Recipe {
   url: string;
   tags: RecipeTag[];
   snapshot_filename: string | null;
+  thumbnail_url: string | null;
   added_by: string;
   created_date: string;
 }

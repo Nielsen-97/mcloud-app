@@ -199,19 +199,30 @@ export async function getRecipes(): Promise<Recipe[]> {
   return request<Recipe[]>('/recipes');
 }
 
-export async function previewRecipeTitle(url: string): Promise<{ title: string; domain: string }> {
-  return request<{ title: string; domain: string }>('/recipes/preview', {
+export interface RecipePreview {
+  title: string;
+  domain: string;
+  image_url: string | null;
+}
+
+export async function previewRecipeTitle(url: string): Promise<RecipePreview> {
+  return request<RecipePreview>('/recipes/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   });
 }
 
-export async function createRecipe(url: string, title: string, tags: RecipeTag[]): Promise<Recipe> {
+export async function createRecipe(
+  url: string,
+  title: string,
+  tags: RecipeTag[],
+  imageUrl?: string | null,
+): Promise<Recipe> {
   return request<Recipe>('/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, title, tags }),
+    body: JSON.stringify({ url, title, tags, image_url: imageUrl ?? null }),
   });
 }
 

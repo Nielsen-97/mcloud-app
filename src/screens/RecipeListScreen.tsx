@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, FlatList, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
-  Modal, TextInput, Alert, RefreshControl, ScrollView,
+  Modal, TextInput, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
@@ -13,6 +13,7 @@ import { COLORS, STORAGE_KEYS } from '../config';
 import { RECIPE_TAGS } from '../types';
 import type { Recipe, RecipeTag } from '../types';
 import { iconForTags, domainFromUrl } from '../utils/recipeIcons';
+import { loadCustomTags, addCustomTag, removeCustomTag } from '../services/customTags';
 import type { RecipeStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RecipeStackParamList, 'RecipeList'>;
@@ -27,39 +28,74 @@ export default function RecipeListScreen({ navigation }: Props) {
   const [activeTag, setActiveTag] = useState<RecipeTag | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [openingSnapshotId, setOpeningSnapshotId] = useState<number | null>(null);
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
+  const allTags = [...RECIPE_TAGS, ...customTags];
 
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [selectedTags, setSelectedTags] = useState<RecipeTag[]>([]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
-    isRefresh ? setRefreshing(true) : setLoading(true);
+    if (isRefresh) setRefreshing(true);
     try {
       const data = await api.getRecipes();
       setRecipes(data);
       setOffline(false);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
-      const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) {
-        setRecipes(JSON.parse(cached));
-        setOffline(true);
-      }
+      setOffline(true);
     }
-    isRefresh ? setRefreshing(false) : setLoading(false);
+    setLoading(false);
+    if (isRefresh) setRefreshing(false);
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem(CACHE_KEY).then(cached => {
+      if (cached) {
+        setRecipes(JSON.parse(cached));
+        setLoading(false);
+      }
+    });
     load();
+    loadCustomTags().then(setCustomTags);
   }, [load]);
 
   const filtered = activeTag ? recipes.filter(r => r.tags.includes(activeTag)) : recipes;
 
+  const handleAddCustomTag = async () => {
+    const tag = newTagInput.trim().toLowerCase();
+    if (!tag) return;
+    if (allTags.includes(tag)) {
+      setNewTagInput('');
+      return;
+    }
+    setCustomTags(await addCustomTag(tag));
+    setNewTagInput('');
+  };
+
+  const confirmDeleteCustomTag = (tag: string) => {
+    Alert.alert('Slet tag', `Slet dit eget tag "${tag}"? Opskrifter beholder tagget, det forsvinder bare fra listen.`, [
+      { text: 'Annuller', style: 'cancel' },
+      {
+        text: 'Slet',
+        style: 'destructive',
+        onPress: async () => {
+          setCustomTags(await removeCustomTag(tag));
+          setSelectedTags(prev => prev.filter(t => t !== tag));
+          if (activeTag === tag) setActiveTag(null);
+        },
+      },
+    ]);
+  };
+
   const resetModal = () => {
     setUrl('');
     setTitle('');
+    setImageUrl(null);
     setSelectedTags([]);
     setModalVisible(false);
   };
@@ -70,6 +106,7 @@ export default function RecipeListScreen({ navigation }: Props) {
     try {
       const result = await api.previewRecipeTitle(url.trim());
       setTitle(result.title);
+      setImageUrl(result.image_url);
     } catch {
       Alert.alert('Fejl', 'Kunne ikke hente titel fra siden — udfyld den manuelt.');
     }
@@ -84,7 +121,7 @@ export default function RecipeListScreen({ navigation }: Props) {
     if (!url.trim() || !title.trim()) return;
     setSaving(true);
     try {
-      await api.createRecipe(url.trim(), title.trim(), selectedTags);
+      await api.createRecipe(url.trim(), title.trim(), selectedTags, imageUrl);
       resetModal();
       await load();
     } catch {
@@ -141,7 +178,7 @@ export default function RecipeListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {offline && (
+      {offline && recipes.length > 0 && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>Offline — viser cachede opskrifter</Text>
         </View>
@@ -153,11 +190,12 @@ export default function RecipeListScreen({ navigation }: Props) {
           onPress={() => setActiveTag(null)}>
           <Text style={[styles.tagChipText, !activeTag && styles.tagChipTextActive]}>Alle</Text>
         </TouchableOpacity>
-        {RECIPE_TAGS.map(tag => (
+        {allTags.map(tag => (
           <TouchableOpacity
             key={tag}
             style={[styles.tagChip, activeTag === tag && styles.tagChipActive]}
-            onPress={() => setActiveTag(tag === activeTag ? null : tag)}>
+            onPress={() => setActiveTag(tag === activeTag ? null : tag)}
+            onLongPress={() => customTags.includes(tag) && confirmDeleteCustomTag(tag)}>
             <Text style={[styles.tagChipText, activeTag === tag && styles.tagChipTextActive]}>{tag}</Text>
           </TouchableOpacity>
         ))}
@@ -175,7 +213,11 @@ export default function RecipeListScreen({ navigation }: Props) {
             style={styles.row}
             onPress={() => navigation.navigate('RecipeWebView', { recipe: item })}
             onLongPress={() => confirmDelete(item)}>
-            <Text style={styles.icon}>{iconForTags(item.tags)}</Text>
+            {item.thumbnail_url ? (
+              <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} />
+            ) : (
+              <Text style={styles.icon}>{iconForTags(item.tags)}</Text>
+            )}
             <View style={styles.info}>
               <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
               <Text style={styles.domain}>{domainFromUrl(item.url)}</Text>
@@ -204,9 +246,12 @@ export default function RecipeListScreen({ navigation }: Props) {
       </TouchableOpacity>
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={resetModal}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
           <View style={styles.modalCard}>
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.modalTitle}>Ny opskrift</Text>
               <TextInput
                 style={styles.input}
@@ -231,16 +276,31 @@ export default function RecipeListScreen({ navigation }: Props) {
               />
               <Text style={styles.tagPickerLabel}>Tags</Text>
               <View style={styles.tagPicker}>
-                {RECIPE_TAGS.map(tag => (
+                {allTags.map(tag => (
                   <TouchableOpacity
                     key={tag}
                     style={[styles.tagChip, selectedTags.includes(tag) && styles.tagChipActive]}
-                    onPress={() => toggleTag(tag)}>
+                    onPress={() => toggleTag(tag)}
+                    onLongPress={() => customTags.includes(tag) && confirmDeleteCustomTag(tag)}>
                     <Text style={[styles.tagChipText, selectedTags.includes(tag) && styles.tagChipTextActive]}>
                       {tag}
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+              <View style={styles.newTagRow}>
+                <TextInput
+                  style={[styles.input, styles.newTagInput]}
+                  placeholder="Nyt tag"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={newTagInput}
+                  onChangeText={setNewTagInput}
+                  autoCapitalize="none"
+                  onSubmitEditing={handleAddCustomTag}
+                />
+                <TouchableOpacity style={styles.newTagButton} onPress={handleAddCustomTag}>
+                  <Text style={styles.newTagButtonText}>Tilføj</Text>
+                </TouchableOpacity>
               </View>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.modalButton} onPress={resetModal}>
@@ -255,7 +315,7 @@ export default function RecipeListScreen({ navigation }: Props) {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -285,6 +345,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   icon: { fontSize: 26, marginRight: 14 },
+  thumbnail: { width: 48, height: 48, borderRadius: 8, marginRight: 14, backgroundColor: COLORS.card },
   info: { flex: 1 },
   title: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
   domain: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
@@ -319,6 +380,10 @@ const styles = StyleSheet.create({
   fetchButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 13 },
   tagPickerLabel: { color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
   tagPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  newTagRow: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
+  newTagInput: { flex: 1 },
+  newTagButton: { backgroundColor: COLORS.card, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10 },
+  newTagButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 13 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 20 },
   modalButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   modalButtonPrimary: { backgroundColor: COLORS.accentDark },

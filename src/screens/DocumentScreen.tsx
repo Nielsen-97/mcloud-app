@@ -25,25 +25,26 @@ export default function DocumentScreen() {
   const [openingId, setOpeningId] = useState<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
-    isRefresh ? setRefreshing(true) : setLoading(true);
+    if (isRefresh) setRefreshing(true);
     try {
       const data = await api.getFiles({ type: 'dokument' });
       setFiles(data);
       setOffline(false);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
-      const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) {
-        setFiles(JSON.parse(cached));
-        setOffline(true);
-      } else {
-        Alert.alert('Fejl', 'Kunne ikke hente dokumenter');
-      }
+      setOffline(true);
     }
-    isRefresh ? setRefreshing(false) : setLoading(false);
+    setLoading(false);
+    if (isRefresh) setRefreshing(false);
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem(CACHE_KEY).then(cached => {
+      if (cached) {
+        setFiles(JSON.parse(cached));
+        setLoading(false);
+      }
+    });
     load();
   }, [load]);
 
@@ -86,7 +87,7 @@ export default function DocumentScreen() {
 
   return (
     <View style={styles.container}>
-      {offline && (
+      {offline && files.length > 0 && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>Offline — viser cachede dokumenter</Text>
         </View>
