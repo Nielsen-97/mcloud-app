@@ -118,14 +118,21 @@ export default function RecipeListScreen({ navigation }: Props) {
   };
 
   const saveRecipe = async () => {
-    if (!url.trim() || !title.trim()) return;
+    if (!url.trim() || !title.trim()) {
+      Alert.alert(
+        'Udfyld felterne',
+        !url.trim() ? 'URL mangler.' : 'Titel mangler — hent den automatisk eller skriv den selv.',
+      );
+      return;
+    }
     setSaving(true);
     try {
       await api.createRecipe(url.trim(), title.trim(), selectedTags, imageUrl);
       resetModal();
       await load();
-    } catch {
-      Alert.alert('Fejl', 'Kunne ikke gemme opskriften');
+    } catch (error: any) {
+      const detail = error?.message ? `\n\n${error.message}` : '';
+      Alert.alert('Fejl', `Kunne ikke gemme opskriften${detail}`);
     }
     setSaving(false);
   };

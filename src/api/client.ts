@@ -21,7 +21,11 @@ export class ApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 15000;
-const UPLOAD_TIMEOUT_MS = 30000;
+// Videos are now included in background sync and can be well over 30s worth
+// of upload time on a home network — the old 30s timeout was very likely
+// why only small photos were making it over and larger videos silently
+// failed as "timed out" every single attempt.
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
