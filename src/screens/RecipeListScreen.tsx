@@ -35,6 +35,7 @@ export default function RecipeListScreen({ navigation }: Props) {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [hasFetchedPreview, setHasFetchedPreview] = useState(false);
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [selectedTags, setSelectedTags] = useState<RecipeTag[]>([]);
   const [saving, setSaving] = useState(false);
@@ -96,6 +97,7 @@ export default function RecipeListScreen({ navigation }: Props) {
     setUrl('');
     setTitle('');
     setImageUrl(null);
+    setHasFetchedPreview(false);
     setSelectedTags([]);
     setModalVisible(false);
   };
@@ -107,7 +109,9 @@ export default function RecipeListScreen({ navigation }: Props) {
       const result = await api.previewRecipeTitle(url.trim());
       setTitle(result.title);
       setImageUrl(result.image_url);
+      setHasFetchedPreview(true);
     } catch {
+      setHasFetchedPreview(false);
       Alert.alert('Fejl', 'Kunne ikke hente titel fra siden — udfyld den manuelt.');
     }
     setFetchingTitle(false);
@@ -274,6 +278,16 @@ export default function RecipeListScreen({ navigation }: Props) {
                   {fetchingTitle ? 'Henter titel…' : 'Hent titel automatisk'}
                 </Text>
               </TouchableOpacity>
+              {hasFetchedPreview && (
+                imageUrl ? (
+                  <View style={styles.previewRow}>
+                    <Image source={{ uri: imageUrl }} style={styles.previewThumbnail} />
+                    <Text style={styles.previewText}>Billede fundet</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.previewTextMuted}>Intet billede fundet på siden</Text>
+                )
+              )}
               <TextInput
                 style={[styles.input, styles.inputSpaced]}
                 placeholder="Titel"
@@ -385,6 +399,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: 8,
   },
   fetchButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 13 },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  previewThumbnail: { width: 40, height: 40, borderRadius: 6, backgroundColor: COLORS.card },
+  previewText: { color: COLORS.textMuted, fontSize: 12 },
+  previewTextMuted: { color: COLORS.textMuted, fontSize: 12, marginTop: 10, fontStyle: 'italic' },
   tagPickerLabel: { color: COLORS.textMuted, fontSize: 12, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
   tagPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   newTagRow: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
