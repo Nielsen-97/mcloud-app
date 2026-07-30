@@ -15,6 +15,18 @@ import type { AdminStats, BackupStatus, FileStats, StorageStats } from '../types
 
 const ADMIN_USERNAME = 'mathias';
 
+/** Parses the "Mem:" row out of raw `free -m` output (a fixed-width terminal
+ * table — showing it as-is on a narrow phone screen wraps and garbles the
+ * column alignment, so we pull out just the numbers we actually want). */
+function parseMemLine(raw: string): { totalMb: number; usedMb: number; freeMb: number } | null {
+  const line = raw.split('\n').find(l => l.trim().startsWith('Mem:'));
+  if (!line) return null;
+  const parts = line.trim().split(/\s+/).slice(1).map(Number);
+  if (parts.length < 3 || parts.some(Number.isNaN)) return null;
+  const [totalMb, usedMb, freeMb] = parts;
+  return { totalMb, usedMb, freeMb };
+}
+
 type UserModalMode = 'create' | 'reset' | null;
 
 export default function SettingsScreen() {
@@ -213,7 +225,18 @@ export default function SettingsScreen() {
                 <Text style={styles.storageText}>
                   {formatBytes(adminStats.disk_used)} af {formatBytes(adminStats.disk_total)} brugt på disk
                 </Text>
-                <Text style={[styles.value, styles.monoText]}>{adminStats.mem}</Text>
+                {(() => {
+                  const mem = parseMemLine(adminStats.mem);
+                  return mem ? (
+                    <Text style={styles.value}>
+                      RAM: {mem.usedMb} MB af {mem.totalMb} MB brugt · {mem.freeMb} MB fri
+                    </Text>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <Text style={[styles.value, styles.monoText]}>{adminStats.mem}</Text>
+                    </ScrollView>
+                  );
+                })()}
                 <Text style={styles.value}>Oppetid: {adminStats.uptime}</Text>
                 <Text style={styles.value}>{adminStats.users} brugere · {adminStats.files} filer</Text>
               </>

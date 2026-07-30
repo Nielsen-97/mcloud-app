@@ -9,7 +9,7 @@ export interface RunQueueOptions<T> {
   maxAttempts?: number;
   baseDelayMs?: number;
   run: (item: T, onItemProgress: (fraction: number) => void) => Promise<void>;
-  onItemDone?: (id: string) => void;
+  onItemDone?: (id: string) => void | Promise<void>;
   onItemFailed?: (id: string, error: unknown) => void;
   onOverallProgress?: (done: number, total: number) => void;
 }
@@ -56,7 +56,7 @@ export async function runQueue<T>(options: RunQueueOptions<T>): Promise<void> {
 
       completed += 1;
       if (succeeded) {
-        onItemDone?.(item.id);
+        await onItemDone?.(item.id);
       } else {
         onItemFailed?.(item.id, lastError);
       }
