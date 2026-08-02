@@ -50,7 +50,12 @@ export default function DateGroupedGrid({
               style={styles.thumbWrap}>
               {renderThumbnail
                 ? renderThumbnail(file)
-                : <Image source={{ uri: thumbnailUri?.(file), headers: authHeaders() }} style={styles.image} />}
+                : (
+                  <Image
+                    source={{ uri: thumbnailUri?.(file), headers: authHeaders(), cache: 'force-cache' }}
+                    style={styles.image}
+                  />
+                )}
               {renderBadge?.(file)}
             </TouchableOpacity>
           ))}
@@ -62,6 +67,11 @@ export default function DateGroupedGrid({
       contentContainerStyle={files.length === 0 ? styles.emptyContainer : undefined}
       ListEmptyComponent={<Text style={styles.emptyText}>Ingen filer endnu</Text>}
       stickySectionHeadersEnabled={false}
+      initialNumToRender={6}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      updateCellsBatchingPeriod={50}
+      removeClippedSubviews
     />
   );
 }

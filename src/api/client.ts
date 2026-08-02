@@ -27,13 +27,11 @@ const REQUEST_TIMEOUT_MS = 15000;
 // failed as "timed out" every single attempt.
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  await waitForInitialResolution();
+async function fetchOnce(path: string, init: RequestInit | undefined): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  let res: Response;
   try {
-    res = await fetch(`${getServerUrl()}${path}`, {
+    return await fetch(`${getServerUrl()}${path}`, {
       // 'omit', not 'include': we attach the session cookie ourselves via
       // authHeaders() below. Letting the OS also auto-attach its own stored
       // cookie caused Flask to receive two comma-joined `session=` values in
@@ -45,13 +43,41 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { ...authHeaders(), ...init?.headers },
       signal: controller.signal,
     });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Tidsudløb: ${path} svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`);
-    }
-    throw error;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function translateFetchError(error: unknown, path: string): Error {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return new Error(`Tidsudløb: ${path} svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`);
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  await waitForInitialResolution();
+  const isGet = (init?.method ?? 'GET') === 'GET';
+  let res: Response;
+  try {
+    res = await fetchOnce(path, init);
+  } catch (error) {
+    // GETs are safe to retry silently — a single retry after a short delay
+    // papers over the transient network-not-ready window right after a cold
+    // launch (WiFi/Tailscale tunnel still coming up), which is what was
+    // causing the offline banner to flash on startup even on a good
+    // connection: the very first request landed in that window and failed,
+    // while a manual pull-to-refresh moments later succeeded because the
+    // network had since finished initializing. Mutating requests (POST/
+    // DELETE/etc.) are never retried here — a "failed" request might have
+    // already reached the server, and retrying those risks duplicate effects.
+    if (!isGet) throw translateFetchError(error, path);
+    await new Promise<void>(resolve => setTimeout(resolve, 800));
+    try {
+      res = await fetchOnce(path, init);
+    } catch (retryError) {
+      throw translateFetchError(retryError, path);
+    }
   }
   if (!res.ok) {
     throw new ApiError(res.status, `${init?.method ?? 'GET'} ${path} failed (${res.status})`);
