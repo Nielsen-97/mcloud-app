@@ -13,6 +13,8 @@ workflows:
       node: 22.11.0
       xcode: latest
       cocoapods: default
+      vars:
+        GH_TOKEN: $GH_TOKEN
     scripts:
       - name: Install npm dependencies
         script: npm ci
@@ -47,5 +49,12 @@ workflows:
           cp -r "$APP_PATH" build/ipa/Payload/
           cd build/ipa
           zip -r ../MCloudApp.ipa Payload
+      - name: Upload IPA to GitHub Releases
+        script: |
+          VERSION=$(date +%Y.%m.%d-%H%M)
+          gh release create "v$VERSION" build/MCloudApp.ipa \
+            --title "MCloud v$VERSION" \
+            --notes "Automatisk build fra Codemagic" \
+            --repo Nielsen-97/mcloud-app
     artifacts:
       - build/MCloudApp.ipa
