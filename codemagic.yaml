@@ -52,7 +52,7 @@ workflows:
       - name: Upload IPA to GitHub Releases
         script: |
           VERSION=$(date +%Y.%m.%d-%H%M)
-          gh release create "v$VERSION" build/MCloudApp.ipa \
+          GITHUB_TOKEN=$GH_TOKEN gh release create "v$VERSION" build/MCloudApp.ipa \
             --title "MCloud v$VERSION" \
             --notes "Automatisk build fra Codemagic" \
             --repo Nielsen-97/mcloud-app
