@@ -89,7 +89,12 @@ export default function Lightbox({ file, onClose }: Props) {
         <Animated.View
           style={[styles.imageWrap, { transform: [{ translateY }] }]}
           {...panResponder.panHandlers}>
-          <Image source={{ uri, headers: authHeaders() }} style={styles.image} resizeMode="contain" />
+          <Image
+            source={{ uri, headers: authHeaders(), cache: 'force-cache' }}
+            style={styles.image}
+            resizeMode="contain"
+            progressiveRenderingEnabled
+          />
         </Animated.View>
 
         <TouchableOpacity style={[styles.closeButton, { top: insets.top + 8 }]} onPress={onClose}>

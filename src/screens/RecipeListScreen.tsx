@@ -225,7 +225,7 @@ export default function RecipeListScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('RecipeWebView', { recipe: item })}
             onLongPress={() => confirmDelete(item)}>
             {item.thumbnail_url ? (
-              <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} />
+              <Image source={{ uri: item.thumbnail_url, cache: 'force-cache' }} style={styles.thumbnail} />
             ) : (
               <Text style={styles.icon}>{iconForTags(item.tags)}</Text>
             )}
@@ -281,7 +281,7 @@ export default function RecipeListScreen({ navigation }: Props) {
               {hasFetchedPreview && (
                 imageUrl ? (
                   <View style={styles.previewRow}>
-                    <Image source={{ uri: imageUrl }} style={styles.previewThumbnail} />
+                    <Image source={{ uri: imageUrl, cache: 'force-cache' }} style={styles.previewThumbnail} />
                     <Text style={styles.previewText}>Billede fundet</Text>
                   </View>
                 ) : (
