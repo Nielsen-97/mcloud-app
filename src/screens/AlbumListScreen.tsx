@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../api/client';
-import { authHeaders, downloadUrl } from '../api/client';
+import { authHeaders, thumbUrl } from '../api/client';
 import { COLORS, STORAGE_KEYS } from '../config';
 import type { Album } from '../types';
 import type { AlbumStackParamList } from '../navigation/types';
@@ -121,7 +121,7 @@ export default function AlbumListScreen({ navigation }: Props) {
             onLongPress={() => confirmDeleteAlbum(item)}>
             {item.cover_image ? (
               <Image
-                source={{ uri: downloadUrl(item.cover_image), headers: authHeaders() }}
+                source={{ uri: thumbUrl(item.cover_image), headers: authHeaders(), cache: 'force-cache' }}
                 style={styles.cover}
               />
             ) : (

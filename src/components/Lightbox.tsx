@@ -6,6 +6,7 @@ import {
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authHeaders, downloadUrl } from '../api/client';
 import { COLORS } from '../config';
 import type { MCloudFile } from '../types';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function Lightbox({ file, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
   const [busy, setBusy] = useState(false);
@@ -90,7 +92,7 @@ export default function Lightbox({ file, onClose }: Props) {
           <Image source={{ uri, headers: authHeaders() }} style={styles.image} resizeMode="contain" />
         </Animated.View>
 
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity style={[styles.closeButton, { top: insets.top + 8 }]} onPress={onClose}>
           <Text style={styles.actionText}>Luk</Text>
         </TouchableOpacity>
 
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   imageWrap: { flex: 1 },
   image: { flex: 1 },
-  closeButton: { position: 'absolute', top: 48, left: 16, padding: 8 },
+  closeButton: { position: 'absolute', left: 16, padding: 8 },
   toolbar: {
     position: 'absolute',
     bottom: 32,

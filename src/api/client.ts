@@ -21,11 +21,23 @@ export class ApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 15000;
-// Videos are now included in background sync and can be well over 30s worth
-// of upload time on a home network — the old 30s timeout was very likely
-// why only small photos were making it over and larger videos silently
-// failed as "timed out" every single attempt.
-const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+// Nginx now accepts uploads up to 10G on both the local and Tailscale paths,
+// and videos synced from the camera roll can be several GB (long 4K clips).
+// A single fixed timeout can't cover both a 200KB photo and an 8GB video, so
+// scale it with the file's size instead: a floor for small files, a per-byte
+// allowance for large ones (assuming a conservative 1MB/s — well below a
+// healthy home WiFi upload, but realistic for a weak signal or Tailscale
+// falling back over a slower connection), and a ceiling so a genuinely dead
+// connection still fails eventually instead of hanging indefinitely.
+const MIN_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+const MAX_UPLOAD_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+const ASSUMED_MIN_UPLOAD_BYTES_PER_SEC = 1024 * 1024;
+
+function uploadTimeoutFor(fileSizeBytes?: number | null): number {
+  if (!fileSizeBytes) return MIN_UPLOAD_TIMEOUT_MS;
+  const estimatedMs = (fileSizeBytes / ASSUMED_MIN_UPLOAD_BYTES_PER_SEC) * 1000;
+  return Math.min(MAX_UPLOAD_TIMEOUT_MS, Math.max(MIN_UPLOAD_TIMEOUT_MS, estimatedMs));
+}
 
 async function fetchOnce(path: string, init: RequestInit | undefined): Promise<Response> {
   const controller = new AbortController();
@@ -97,6 +109,15 @@ export function downloadUrl(filename: string): string {
 
 export function viewUrl(filename: string): string {
   return `${getServerUrl()}/view/${filename}`;
+}
+
+/**
+ * Resized (~300px) server-side thumbnail, cached on disk on the Pi — used
+ * for grid cells instead of downloadUrl() (the full original), which was
+ * the main reason the photo/album grids were slow to load.
+ */
+export function thumbUrl(filename: string): string {
+  return `${getServerUrl()}/thumb/${filename}`;
 }
 
 /**
@@ -307,6 +328,7 @@ export interface UploadFileInput {
   uri: string;
   name: string;
   type: string;
+  sizeBytes?: number | null;
 }
 
 /**
@@ -321,8 +343,9 @@ export interface UploadFileInput {
  */
 export async function uploadFile(file: UploadFileInput, albumId?: number): Promise<void> {
   await waitForInitialResolution();
+  const timeoutMs = uploadTimeoutFor(file.sizeBytes);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const form = new FormData();
     form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
@@ -340,7 +363,7 @@ export async function uploadFile(file: UploadFileInput, albumId?: number): Promi
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Tidsudløb: upload svarede ikke inden for ${UPLOAD_TIMEOUT_MS / 1000}s`);
+      throw new Error(`Tidsudløb: upload svarede ikke inden for ${Math.round(timeoutMs / 1000)}s`);
     }
     throw error;
   } finally {

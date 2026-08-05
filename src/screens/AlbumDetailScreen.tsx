@@ -4,8 +4,9 @@ import {
   FlatList, Image, Alert, Share as RNShare,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../api/client';
-import { authHeaders, downloadUrl } from '../api/client';
+import { authHeaders, thumbUrl } from '../api/client';
 import { COLORS } from '../config';
 import DateGroupedGrid, { GRID_THUMB_SIZE } from '../components/DateGroupedGrid';
 import Lightbox from '../components/Lightbox';
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<AlbumStackParamList, 'AlbumDetail'>;
 
 export default function AlbumDetailScreen({ route, navigation }: Props) {
   const { album } = route.params;
+  const insets = useSafeAreaInsets();
   const [files, setFiles] = useState<MCloudFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<MCloudFile | null>(null);
@@ -117,7 +119,7 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
 
       <DateGroupedGrid
         files={files}
-        thumbnailUri={file => downloadUrl(file.filename)}
+        thumbnailUri={file => thumbUrl(file.filename)}
         onPress={setSelected}
         refreshing={false}
         onRefresh={load}
@@ -126,7 +128,7 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
 
       <Modal visible={pickerVisible} animationType="slide" onRequestClose={() => setPickerVisible(false)}>
         <View style={styles.pickerContainer}>
-          <View style={styles.pickerHeader}>
+          <View style={[styles.pickerHeader, { paddingTop: insets.top + 16 }]}>
             <Text style={styles.pickerTitle}>Vælg billeder</Text>
             <TouchableOpacity onPress={() => setPickerVisible(false)}>
               <Text style={styles.toolbarButtonText}>Luk</Text>
@@ -139,7 +141,7 @@ export default function AlbumDetailScreen({ route, navigation }: Props) {
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => addPhoto(item)} disabled={adding} style={styles.pickerTile}>
                 <Image
-                  source={{ uri: downloadUrl(item.filename), headers: authHeaders() }}
+                  source={{ uri: thumbUrl(item.filename), headers: authHeaders(), cache: 'force-cache' }}
                   style={styles.pickerImage}
                 />
               </TouchableOpacity>

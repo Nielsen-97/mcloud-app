@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as api from '../api/client';
-import { downloadUrl } from '../api/client';
+import { thumbUrl } from '../api/client';
 import { STORAGE_KEYS, COLORS } from '../config';
 import DateGroupedGrid from '../components/DateGroupedGrid';
 import Lightbox from '../components/Lightbox';
@@ -62,7 +62,7 @@ export default function GalleryScreen() {
       )}
       <DateGroupedGrid
         files={files}
-        thumbnailUri={file => downloadUrl(file.filename)}
+        thumbnailUri={file => thumbUrl(file.filename)}
         onPress={setSelected}
         refreshing={refreshing}
         onRefresh={() => load(true)}

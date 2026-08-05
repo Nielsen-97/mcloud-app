@@ -36,7 +36,7 @@ async function getAllPhotos(): Promise<PhotoIdentifier[]> {
       first: 200,
       after,
       assetType: 'All',
-      include: ['filename', 'fileExtension', 'imageSize'],
+      include: ['filename', 'fileExtension', 'imageSize', 'fileSize'],
     });
     all.push(...page.edges);
     if (!page.page_info.has_next_page) break;
@@ -119,6 +119,7 @@ async function runSync(onProgress?: SyncProgressListener): Promise<SyncProgress>
         uri: photo.node.image.uri,
         name: filename,
         type: mimeTypeFor(photo),
+        sizeBytes: photo.node.image.fileSize,
       });
     },
     onItemDone: async id => {

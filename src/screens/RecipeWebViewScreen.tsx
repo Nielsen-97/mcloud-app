@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../config';
 import type { RecipeStackParamList } from '../navigation/types';
 
@@ -15,13 +16,14 @@ type Props = NativeStackScreenProps<RecipeStackParamList, 'RecipeWebView'>;
 
 export default function RecipeWebViewScreen({ route, navigation }: Props) {
   const { recipe } = route.params;
+  const insets = useSafeAreaInsets();
   const webviewRef = useRef<{ goBack: () => void }>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
 
   return (
     <View style={styles.container}>
-      <View style={styles.toolbar}>
+      <View style={[styles.toolbar, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           style={styles.toolbarButton}
           onPress={() => (canGoBack ? webviewRef.current?.goBack() : navigation.goBack())}>
