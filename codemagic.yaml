@@ -13,8 +13,8 @@ workflows:
       node: 22.11.0
       xcode: latest
       cocoapods: default
-      vars:
-        GH_TOKEN: $GH_TOKEN
+      groups:
+        - default
     scripts:
       - name: Install npm dependencies
         script: npm ci
