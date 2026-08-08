@@ -57,7 +57,12 @@ workflows:
             -H "Content-Type: application/json" \
             -d "{\"tag_name\":\"v$VERSION\",\"name\":\"MCloud v$VERSION\",\"body\":\"Automatisk build\"}" \
             https://api.github.com/repos/Nielsen-97/mcloud-app/releases)
-          UPLOAD_URL=$(echo $RELEASE | python3 -c "import sys,json; print(json.load(sys.stdin)['upload_url'].split('{')[0])")
+          echo "GitHub API response: $RELEASE"
+          UPLOAD_URL=$(echo $RELEASE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('upload_url','').split('{')[0])")
+          if [ -z "$UPLOAD_URL" ]; then
+            echo "Failed to get upload URL, skipping release upload"
+            exit 0
+          fi
           curl -s -X POST \
             -H "Authorization: token $GH_TOKEN" \
             -H "Content-Type: application/octet-stream" \
