@@ -43,6 +43,7 @@ export default function SettingsScreen() {
   const [users, setUsers] = useState<string[]>([]);
   const [backup, setBackup] = useState<BackupStatus | null>(null);
   const [adminUnavailable, setAdminUnavailable] = useState(false);
+  const [runningBackup, setRunningBackup] = useState(false);
 
   const [userModalMode, setUserModalMode] = useState<UserModalMode>(null);
   const [modalUsername, setModalUsername] = useState('');
@@ -121,6 +122,24 @@ export default function SettingsScreen() {
       Alert.alert('Fejl', error?.status === 400 ? 'Brugeren findes allerede' : 'Handlingen fejlede');
     }
     setSavingUser(false);
+  };
+
+  const runBackupNow = async () => {
+    setRunningBackup(true);
+    try {
+      await api.runBackup();
+      Alert.alert('Backup startet', 'Backuppen kører nu i baggrunden på serveren.');
+      // The script runs on the server, not in this request — re-fetch the
+      // status/log shortly after so the card reflects it, rather than
+      // right away before it's had any chance to write anything.
+      setTimeout(() => {
+        api.getBackupStatus().then(setBackup).catch(() => {});
+      }, 3000);
+    } catch (error: any) {
+      const detail = error?.message ? `\n\n${error.message}` : '';
+      Alert.alert('Fejl', `Kunne ikke starte backup${detail}`);
+    }
+    setRunningBackup(false);
   };
 
   const confirmDeleteUser = (targetUsername: string) => {
@@ -270,7 +289,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Backup (rclone)</Text>
+            <Text style={styles.label}>Backup (Scaleway)</Text>
             {backup ? (
               <>
                 <Text style={styles.value}>
@@ -285,6 +304,9 @@ export default function SettingsScreen() {
             ) : (
               <Text style={styles.debugText}>Ikke tilgængelig</Text>
             )}
+            <TouchableOpacity style={styles.button} onPress={runBackupNow} disabled={runningBackup}>
+              <Text style={styles.buttonText}>{runningBackup ? 'Starter…' : 'Kør backup nu'}</Text>
+            </TouchableOpacity>
           </View>
         </>
       )}

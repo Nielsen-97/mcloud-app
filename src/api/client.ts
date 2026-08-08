@@ -324,11 +324,25 @@ export async function getBackupStatus(): Promise<BackupStatus> {
   return request<BackupStatus>('/admin/backup/status');
 }
 
+export async function runBackup(): Promise<void> {
+  await request('/admin/backup', { method: 'POST' });
+}
+
 export interface UploadFileInput {
   uri: string;
   name: string;
   type: string;
   sizeBytes?: number | null;
+  /**
+   * The camera roll asset's localIdentifier, when this upload comes from
+   * photoSync. Lets the server recognize a re-upload of an edited photo
+   * (same identifier, new bytes) and replace the existing file instead of
+   * silently inserting a duplicate-looking second copy — see the
+   * "edited photos" section of the server-changes doc for the server side
+   * of this. Optional and harmless to omit; a server that doesn't look at
+   * this field yet just ignores it.
+   */
+  localIdentifier?: string;
 }
 
 /**
@@ -350,6 +364,7 @@ export async function uploadFile(file: UploadFileInput, albumId?: number): Promi
     const form = new FormData();
     form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
     if (albumId != null) form.append('album_id', String(albumId));
+    if (file.localIdentifier) form.append('local_identifier', file.localIdentifier);
 
     const res = await fetch(`${getServerUrl()}/upload`, {
       method: 'POST',
