@@ -50,7 +50,6 @@ workflows:
           cd build/ipa
           zip -r ../MCloudApp.ipa Payload
       - name: Upload IPA to GitHub Releases
-        - name: Upload IPA to GitHub Releases
         script: |
           VERSION=$(date +%Y.%m.%d-%H%M)
           RELEASE=$(curl -s -X POST \
