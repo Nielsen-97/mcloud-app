@@ -4,7 +4,7 @@
   "apps": [
     {
       "name": "MCloud",
-      "bundleIdentifier": "org.reactjs.native.example.MCloudApp",
+      "bundleIdentifier": "com.mcloud.app",
       "developerName": "Mathias Nielsen",
       "subtitle": "Din selvhostede cloud",
       "localizedDescription": "MCloud er en privat cloud-løsning der kører på din egen Raspberry Pi.",
