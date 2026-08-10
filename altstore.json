@@ -1,10 +1,10 @@
 {
   "name": "MCloud",
-  "identifier": "org.reactnative.example.MCloudApp",
+  "identifier": "com.mcloud.app",
   "apps": [
     {
       "name": "MCloud",
-      "bundleIdentifier": "org.reactnative.example.MCloudApp",
+      "bundleIdentifier": "com.mcloud.app",
       "developerName": "Mathias Nielsen",
       "subtitle": "Din selvhostede cloud",
       "localizedDescription": "MCloud er en privat cloud-løsning der kører på din egen Raspberry Pi.",
