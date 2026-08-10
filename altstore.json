@@ -1,0 +1,23 @@
+{
+  "name": "MCloud",
+  "identifier": "com.mcloud.app",
+  "apps": [
+    {
+      "name": "MCloud",
+      "bundleIdentifier": "com.mcloud.app",
+      "developerName": "Mathias Nielsen",
+      "subtitle": "Din selvhostede cloud",
+      "localizedDescription": "MCloud er en privat cloud-løsning der kører på din egen Raspberry Pi.",
+      "iconURL": "https://raw.githubusercontent.com/Nielsen-97/mcloud-app/main/ios/MCloudApp/Images.xcassets/AppIcon.appiconset/icon-1024.png",
+      "tintColor": "1D9E75",
+      "versions": [
+        {
+          "version": "v2026.08.08-1943",
+          "date": "2026-08-08",
+          "downloadURL": "https://github.com/Nielsen-97/mcloud-app/releases/download/v2026.08.08-1943/MCloudApp.ipa",
+          "size": 18142012
+        }
+      ]
+    }
+  ]
+}
