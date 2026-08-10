@@ -16,6 +16,9 @@ workflows:
       groups:
         - default
     scripts:
+      - name: Set version
+        script: |
+          echo "VERSION=$(date +%Y.%m.%d-%H%M)" >> $CM_ENV
       - name: Install npm dependencies
         script: npm ci
       - name: Install CocoaPods
@@ -35,6 +38,7 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION=$VERSION \
             build
       - name: Package as .ipa
         script: |
@@ -51,16 +55,14 @@ workflows:
           zip -r ../MCloudApp.ipa Payload
       - name: Upload IPA to GitHub Releases
         script: |
-          VERSION=$(date +%Y.%m.%d-%H%M)
           RELEASE=$(curl -s -X POST \
             -H "Authorization: token $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"tag_name\":\"v$VERSION\",\"name\":\"MCloud v$VERSION\",\"body\":\"Automatisk build\"}" \
             https://api.github.com/repos/Nielsen-97/mcloud-app/releases)
-          echo "GitHub API response: $RELEASE"
           UPLOAD_URL=$(echo $RELEASE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('upload_url','').split('{')[0])")
           if [ -z "$UPLOAD_URL" ]; then
-            echo "Failed to get upload URL, skipping release upload"
+            echo "Failed to get upload URL"
             exit 0
           fi
           curl -s -X POST \
@@ -68,7 +70,6 @@ workflows:
             -H "Content-Type: application/octet-stream" \
             --data-binary @build/MCloudApp.ipa \
             "${UPLOAD_URL}?name=MCloudApp.ipa"
-            # Opdater AltStore source.json på Pi'en
           curl -s -X POST https://mcloud.taile49ac8.ts.net/webhook/altstore-update \
             -H "X-Webhook-Token: mcloud-webhook-2026" || true
     artifacts:
