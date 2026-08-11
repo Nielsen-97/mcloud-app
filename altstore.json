@@ -10,15 +10,15 @@
       "localizedDescription": "MCloud er en privat cloud-løsning der kører på din egen Raspberry Pi.",
       "iconURL": "https://raw.githubusercontent.com/Nielsen-97/mcloud-app/main/ios/MCloudApp/Images.xcassets/AppIcon.appiconset/icon-1024.png",
       "tintColor": "1D9E75",
-      "version": "2026.08.11-0901",
-      "downloadURL": "https://github.com/Nielsen-97/mcloud-app/releases/download/2026.08.11-0901/MCloudApp.ipa",
+      "version": "2026.08.11-0910",
+      "downloadURL": "https://github.com/Nielsen-97/mcloud-app/releases/download/2026.08.11-0910/MCloudApp.ipa",
       "size": 18142024,
       "versions": [
         {
-          "version": "2026.08.11-0901",
+          "version": "2026.08.11-0910",
           "date": "2026-08-11",
           "localizedDescription": "Automatisk build fra Codemagic.",
-          "downloadURL": "https://github.com/Nielsen-97/mcloud-app/releases/download/2026.08.11-0901/MCloudApp.ipa",
+          "downloadURL": "https://github.com/Nielsen-97/mcloud-app/releases/download/2026.08.11-0910/MCloudApp.ipa",
           "size": 18142024
         }
       ]
