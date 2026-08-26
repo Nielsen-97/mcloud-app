@@ -10,6 +10,7 @@ import NetInfo from '@react-native-community/netinfo';
 
 import { COLORS } from './src/config';
 import { resolveServerUrl } from './src/services/serverUrl';
+import { configureBackgroundFetch } from './src/services/backgroundSync';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { SyncProvider } from './src/context/SyncContext';
 import UploadBanner from './src/components/UploadBanner';
@@ -125,6 +126,13 @@ export default function App() {
     resolveServerUrl();
     // Re-probe local vs. Tailscale whenever connectivity changes (e.g. arriving home).
     const unsubscribe = NetInfo.addEventListener(() => resolveServerUrl());
+    // Must run unconditionally and this early, regardless of login state —
+    // previously this only happened inside SyncProvider, which doesn't
+    // mount until after login. iOS's BGTaskScheduler needs the task
+    // identifier registered essentially at launch; gating it behind auth
+    // meant a background relaunch before the user ever logged in that
+    // session would never register the task handler at all.
+    configureBackgroundFetch();
     return unsubscribe;
   }, []);
 

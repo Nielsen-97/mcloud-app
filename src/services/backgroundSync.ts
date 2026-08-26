@@ -5,6 +5,22 @@ import { syncNewPhotos } from './photoSync';
 let netInfoUnsubscribe: (() => void) | null = null;
 let wasOnWifi = false;
 
+type ProgressListener = (uploaded: number, total: number) => void;
+let progressListener: ProgressListener | null = null;
+let configured = false;
+
+/**
+ * SyncContext only exists (and can report progress) once the user is
+ * logged in, but the OS-level task must be registered unconditionally at
+ * true app launch regardless of auth state — see configureBackgroundFetch()
+ * below for why. This lets whichever listener is currently mounted (or
+ * none, before login) receive progress updates from a background-triggered
+ * sync without configure() needing to be called again to rebind it.
+ */
+export function setBackgroundSyncProgressListener(listener: ProgressListener | null): void {
+  progressListener = listener;
+}
+
 /**
  * Registers the OS-level periodic background fetch task. On iOS this is a
  * `BGAppRefreshTask`: the OS decides the actual cadence (a "15 min" request
@@ -13,10 +29,18 @@ let wasOnWifi = false;
  * this at all. Backgrounding the app (home button) allows it; swiping it
  * away in the app switcher does not, and no app-level config can change
  * that — it's an OS policy, not a bug in this code.
+ *
+ * Must be called unconditionally, once, as early as possible in the app's
+ * lifecycle — iOS's BGTaskScheduler expects every permitted task identifier
+ * to be registered essentially at launch, and a registration gated behind
+ * app state (e.g. only after the user logs in) can simply never happen for
+ * a given process lifetime if that gate is never reached. syncNewPhotos()
+ * already fails harmlessly (caught below) if there's no valid session yet,
+ * so there's no downside to registering before login.
  */
-export async function configureBackgroundFetch(
-  onProgress?: (uploaded: number, total: number) => void,
-): Promise<void> {
+export async function configureBackgroundFetch(): Promise<void> {
+  if (configured) return;
+  configured = true;
   await BackgroundFetch.configure(
     {
       minimumFetchInterval: 15,
@@ -26,7 +50,7 @@ export async function configureBackgroundFetch(
     },
     async taskId => {
       try {
-        await syncNewPhotos(progress => onProgress?.(progress.uploaded, progress.total));
+        await syncNewPhotos(progress => progressListener?.(progress.uploaded, progress.total));
       } catch (error) {
         console.warn('MCloud background sync failed', error);
       } finally {

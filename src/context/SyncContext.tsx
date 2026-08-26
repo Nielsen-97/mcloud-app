@@ -4,7 +4,7 @@ import React, {
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { getLastSyncTime, syncNewPhotos } from '../services/photoSync';
-import { configureBackgroundFetch, startWifiSyncTrigger } from '../services/backgroundSync';
+import { setBackgroundSyncProgressListener, startWifiSyncTrigger } from '../services/backgroundSync';
 
 interface SyncContextValue {
   syncing: boolean;
@@ -64,7 +64,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       wasOfflineRef.current = offline;
     });
 
-    configureBackgroundFetch((u, t) => {
+    // Registration itself happens unconditionally at app root (App.tsx) —
+    // this only wires background-triggered progress into this context's
+    // state, which can't exist before login anyway.
+    setBackgroundSyncProgressListener((u, t) => {
       setUploaded(u);
       setTotal(t);
     });
@@ -78,6 +81,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      setBackgroundSyncProgressListener(null);
       unsubscribeNet();
       unsubscribeWifi();
       appStateSub.remove();
