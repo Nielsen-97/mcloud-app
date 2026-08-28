@@ -41,7 +41,7 @@ jobs:
 
       - name: Package as IPA
         run: |
-          APP_PATH="build/Build/Products/Debug-iphoneos/MCloudApp.app"
+          APP_PATH="build/Build/Products/Release-iphoneos/MCloudApp.app"
           mkdir -p build/ipa/Payload
           cp -r "$APP_PATH" build/ipa/Payload/
           cd build/ipa && zip -r ../MCloudApp.ipa Payload
