@@ -27,6 +27,18 @@ function parseMemLine(raw: string): { totalMb: number; usedMb: number; freeMb: n
   return { totalMb, usedMb, freeMb };
 }
 
+/** Parses "20260823_215920" (YYYYMMDD_HHMMSS) into a Date, or null if it
+ * doesn't match — shown as-is if unparseable rather than hidden. */
+function parseBackupTimestamp(raw: string): Date | null {
+  const match = raw.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second] = match;
+  const date = new Date(
+    Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second),
+  );
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 type UserModalMode = 'create' | 'reset' | null;
 
 export default function SettingsScreen() {
@@ -295,6 +307,21 @@ export default function SettingsScreen() {
                 <Text style={styles.value}>
                   {backup.configured ? 'Sat op' : 'Ikke sat op endnu'}
                 </Text>
+                {backup.backup_status === 'running' && (
+                  <View style={styles.backupRunningRow}>
+                    <ActivityIndicator size="small" color={COLORS.accent} />
+                    <Text style={styles.value}>Backup kører nu…</Text>
+                  </View>
+                )}
+                {backup.last_backup && (
+                  <Text style={styles.value}>
+                    Sidste backup: {(() => {
+                      const date = parseBackupTimestamp(backup.last_backup);
+                      return date ? date.toLocaleString('da-DK') : backup.last_backup;
+                    })()}
+                    {backup.backup_status === 'ok' ? ' ✓' : ''}
+                  </Text>
+                )}
                 {backup.log ? (
                   <Text style={[styles.debugText, styles.monoText]} numberOfLines={20}>{backup.log}</Text>
                 ) : (
@@ -373,6 +400,7 @@ const styles = StyleSheet.create({
   storageFill: { height: 8, backgroundColor: COLORS.accent },
   storageText: { color: COLORS.textMuted, fontSize: 12 },
   errorText: { color: COLORS.red, fontSize: 12, marginBottom: 4 },
+  backupRunningRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   statsRow: { flexDirection: 'row', gap: 20 },
   statItem: { color: COLORS.text, fontSize: 15 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
