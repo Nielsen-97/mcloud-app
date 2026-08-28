@@ -39,9 +39,9 @@ function uploadTimeoutFor(fileSizeBytes?: number | null): number {
   return Math.min(MAX_UPLOAD_TIMEOUT_MS, Math.max(MIN_UPLOAD_TIMEOUT_MS, estimatedMs));
 }
 
-async function fetchOnce(path: string, init: RequestInit | undefined): Promise<Response> {
+async function fetchOnce(path: string, init: RequestInit | undefined, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(`${getServerUrl()}${path}`, {
       // 'omit', not 'include': we attach the session cookie ourselves via
@@ -60,19 +60,19 @@ async function fetchOnce(path: string, init: RequestInit | undefined): Promise<R
   }
 }
 
-function translateFetchError(error: unknown, path: string): Error {
+function translateFetchError(error: unknown, path: string, timeoutMs: number): Error {
   if (error instanceof Error && error.name === 'AbortError') {
-    return new Error(`Tidsudløb: ${path} svarede ikke inden for ${REQUEST_TIMEOUT_MS / 1000}s`);
+    return new Error(`Tidsudløb: ${path} svarede ikke inden for ${timeoutMs / 1000}s`);
   }
   return error instanceof Error ? error : new Error(String(error));
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   await waitForInitialResolution();
   const isGet = (init?.method ?? 'GET') === 'GET';
   let res: Response;
   try {
-    res = await fetchOnce(path, init);
+    res = await fetchOnce(path, init, timeoutMs);
   } catch (error) {
     // GETs are safe to retry silently — a single retry after a short delay
     // papers over the transient network-not-ready window right after a cold
@@ -83,12 +83,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // network had since finished initializing. Mutating requests (POST/
     // DELETE/etc.) are never retried here — a "failed" request might have
     // already reached the server, and retrying those risks duplicate effects.
-    if (!isGet) throw translateFetchError(error, path);
+    if (!isGet) throw translateFetchError(error, path, timeoutMs);
     await new Promise<void>(resolve => setTimeout(resolve, 800));
     try {
-      res = await fetchOnce(path, init);
+      res = await fetchOnce(path, init, timeoutMs);
     } catch (retryError) {
-      throw translateFetchError(retryError, path);
+      throw translateFetchError(retryError, path, timeoutMs);
     }
   }
   if (!res.ok) {
@@ -259,12 +259,19 @@ export interface RecipePreview {
   image_url: string | null;
 }
 
+// The server renders the page with Playwright for both of these (preview
+// extracts og:image from the JS-rendered DOM, save also generates a PDF
+// snapshot in the same page load) — 10-30s on a Pi 4 per a real measurement,
+// well past the default 15s request timeout that's fine for plain JSON
+// endpoints.
+const RECIPE_TIMEOUT_MS = 60000;
+
 export async function previewRecipeTitle(url: string): Promise<RecipePreview> {
   return request<RecipePreview>('/recipes/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
-  });
+  }, RECIPE_TIMEOUT_MS);
 }
 
 export async function createRecipe(
@@ -277,7 +284,7 @@ export async function createRecipe(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url, title, tags, image_url: imageUrl ?? null }),
-  });
+  }, RECIPE_TIMEOUT_MS);
 }
 
 export async function deleteRecipe(id: number): Promise<void> {
