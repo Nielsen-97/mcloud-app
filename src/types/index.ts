@@ -37,6 +37,9 @@ export interface FileStats {
 export interface BackupStatus {
   configured: boolean;
   log: string;
+  /** e.g. "20260823_215920" (YYYYMMDD_HHMMSS) */
+  last_backup?: string | null;
+  backup_status?: 'ok' | 'running' | string;
 }
 
 export interface AdminStats {

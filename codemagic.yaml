@@ -31,7 +31,7 @@ workflows:
           xcodebuild \
             -workspace ios/MCloudApp.xcworkspace \
             -scheme MCloudApp \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
@@ -43,7 +43,7 @@ workflows:
       - name: Package as .ipa
         script: |
           set -e
-          APP_PATH="build/Build/Products/Debug-iphoneos/MCloudApp.app"
+          APP_PATH="build/Build/Products/Release-iphoneos/MCloudApp.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "Build product not found at $APP_PATH" >&2
             find build/Build/Products -maxdepth 2 >&2
