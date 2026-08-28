@@ -29,7 +29,7 @@ jobs:
           xcodebuild \
             -workspace ios/MCloudApp.xcworkspace \
             -scheme MCloudApp \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
